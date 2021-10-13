@@ -2,12 +2,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 
-class CosineSimilarity():
+class CosineSimilarity:
     def __init__(self):
         self.X_train = None
         self.y_train = None
 
-    def fit(self, X_train, y_train):
+    def fit(self, X_train, y_train, X_val, y_val):
         self.X_train = np.asarray(X_train)
         self.y_train = np.asarray(y_train)
 
@@ -32,3 +32,11 @@ class CosineSimilarity():
             sent[pos] = prob
 
         return proba_mat
+
+    def threshold(self, val_predictions_labels, oos_label, value=0.5):
+        """
+            for pred, true_label in val_predictions_labels:
+                pred_label = pred[0]
+                similarity = pred[1]
+        """
+        return None

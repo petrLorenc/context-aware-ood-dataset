@@ -1,28 +1,64 @@
-from utils import Split, find_best_threshold, NEEDS_VAL
+from utils import Split, NEEDS_VAL
 from testing import Testing
 
 import time, psutil
 import numpy as np
 
 
-def evaluate(dataset, model, model_name, embed_f, limit_num_sents):
+def find_best_threshold(val_predictions_labels, oos_label):
+    """
+    Function used to find the best threshold in oos-threshold.
+    :param:            val_predictions_labels - prediction on the validation set, list
+                        oos_label - encodes oos label, int
+    :returns:           threshold - best threshold
+    """
+
+    # Initialize search for best threshold
+    thresholds = np.linspace(0, 1, 101)
+    previous_val_accuracy = 0
+    threshold = 0
+
+    # Find best threshold
+    for idx, tr in enumerate(thresholds):
+        val_accuracy_correct = 0
+        val_accuracy_out_of = 0
+
+        for pred, true_label in val_predictions_labels:
+            pred_label = pred[0]
+            similarity = pred[1]
+
+            if similarity < tr:
+                pred_label = oos_label
+
+            if pred_label == true_label:
+                val_accuracy_correct += 1
+
+            val_accuracy_out_of += 1
+
+        val_accuracy = val_accuracy_correct / val_accuracy_out_of
+
+        if val_accuracy < previous_val_accuracy:
+            threshold = thresholds[idx - 1]  # best threshold is the previous one
+            break
+
+        previous_val_accuracy = val_accuracy
+        threshold = tr
+
+    return threshold
+
+
+def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_threshold_fn):
     split = Split(embed_f)
 
     # TRAINING
     start_time_train = time.time()
 
     # Split dataset
-    X_train, y_train = split.get_X_y(dataset['train'], limit_num_sents=limit_num_sents, set_type='train')
-    X_val, y_val = split.get_X_y(dataset['val'] + dataset['oos_val'], limit_num_sents=limit_num_sents, set_type='val')
+    X_train, y_train = split.get_X_y(dataset['train'], limit_num_sents=limit_num_sents)
+    X_val, y_val = split.get_X_y(dataset['val'], limit_num_sents=limit_num_sents)
 
     # Train
-    if model_name in NEEDS_VAL:
-        X_val_fit, y_val_fit = split.get_X_y(dataset['val'], limit_num_sents=limit_num_sents,
-                                             set_type='val')  # validation split must contain same labels as train split
-
-        model.fit(X_train, y_train, X_val_fit, y_val_fit)
-    else:
-        model.fit(X_train, y_train)
+    model.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
 
     # Find threshold
     val_predictions_labels = []  # used to find threshold
@@ -36,22 +72,47 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents):
     for pred, true_label in zip(predictions, y_val):
         val_predictions_labels.append((pred, true_label))
 
-    threshold = find_best_threshold(val_predictions_labels, split.intents_dct['oos'])
+    threshold = find_best_threshold_fn(val_predictions_labels, split.intents_dct['ood'])
+    if threshold is None:
+        threshold = find_best_threshold(val_predictions_labels, split.intents_dct['ood'])
 
     end_time_train = time.time()
 
     memory = psutil.Process().memory_full_info().uss / (1024 ** 2)  # in megabytes
 
     # TESTING
+    results_dct = {"results": {}}
     start_time_inference = time.time()
 
     # Split dataset
-    X_test, y_test = split.get_X_y(dataset['test'] + dataset['oos_test'], limit_num_sents=None,
-                                   set_type='test')
-
+    X_test, y_test = split.get_X_y(dataset['test'], limit_num_sents=None)
     # Test
-    testing = Testing(model, X_test, y_test, model_name, split.intents_dct['oos'])
-    results_dct = testing.test_threshold(threshold)
+    testing = Testing(model, X_test, y_test, model_name, split.intents_dct['ood'])
+    results_dct["results"]["local_intents"] = testing.test_threshold(threshold, focus="IND")
+
+    # Split dataset
+    X_test, y_test = split.get_X_y(dataset['global_train'] + dataset['global_val'] + dataset['global_test'], limit_num_sents=None)
+    # Test
+    testing = Testing(model, X_test, y_test, model_name, split.intents_dct['global'])
+    results_dct["results"]["global_intents"] = testing.test_threshold(threshold, focus="OOD")
+
+    # Split dataset
+    X_test, y_test = split.get_X_y(dataset['global_ood'], limit_num_sents=None)
+    # Test
+    testing = Testing(model, X_test, y_test, model_name, split.intents_dct['ood'])
+    results_dct["results"]["global_ood"] = testing.test_threshold(threshold, focus="OOD")
+
+    # Split dataset
+    X_test, y_test = split.get_X_y(dataset['local_ood'], limit_num_sents=None)
+    # Test
+    testing = Testing(model, X_test, y_test, model_name, split.intents_dct['ood'])
+    results_dct["results"]["local_ood"] = testing.test_threshold(threshold, focus="OOD")
+
+    # Split dataset
+    X_test, y_test = split.get_X_y(dataset['garbage'], limit_num_sents=None)
+    # Test
+    testing = Testing(model, X_test, y_test, model_name, split.intents_dct['garbage'])
+    results_dct["results"]["garbage"] = testing.test_threshold(threshold, focus="GARBAGE")
 
     end_time_inference = time.time()
 
