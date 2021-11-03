@@ -7,6 +7,7 @@ from NeuralNets import BaselineNNExtraLayer, OwnLogisticRegression
 import tensorflow_hub as hub
 from sentence_transformers import SentenceTransformer
 from sklearn.linear_model import LogisticRegression
+from custom_embeddings.fasttext import FastTextSW
 
 RANDOM_SELECTION = False  # am I testing using the random selection of IN intents?
 repetitions = 5  # number of evaluations when using random selection
@@ -23,26 +24,36 @@ imports = []
 #     LogisticRegression(class_weight="balanced", max_iter=2000)
 # ]))
 # ------------------------------------------------------------
-from ood_threshold import evaluate
+# from ood_threshold import evaluate
+from ood_illusionist import evaluate
 #
 imports.append((evaluate, [
     OwnLogisticRegression(),
-    BaselineNNExtraLayer(),
-    CosineSimilarity()
+    # BaselineNNExtraLayer()
+    # CosineSimilarity() # not for testing illusionist
 ]))
 
 dataset_name = 'ALQUIST'
 categories = [
     'animals',
-    'books', 'education', 'fashion', 'food', 'habits',
+    'books', 'education',
+    'fashion', 'food', 'habits',
     'movies', 'music', 'science', 'smalltalk',
     'sports', 'travel'
 ]
+
+# dataset_name = 'CLINC150'
+# categories = [
+#     '10',
+#     "5",
+#     "2"
+# ]
 # ------------------------------------------------------------
 
 
 embedding_functions = {}  # uncomment them one by one when measuring memory usage or pre-training time
 # embedding_functions['use_dan'] = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+embedding_functions['fasttext'] = FastTextSW(model_data_path="../data/embeddings/wiki_en_50k.pickle", sw_data_path="../data/embeddings/wiki_en_sw_100k.pickle")
 embedding_functions['use_dan'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_4")
 # embedding_functions['use_dan'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")
 # embedding_functions['use_tran'] = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")

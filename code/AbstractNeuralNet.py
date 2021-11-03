@@ -27,11 +27,11 @@ class AbstractNeuralNet(ABC):
 
         self.model = self.create_model(emb_dim, num_classes)
 
-        self.model.compile(optimizer='adam',
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005),
                            loss=self.loss,
                            metrics=['accuracy'])
 
-        es = EarlyStopping(monitor='val_loss', mode="min", patience=5)
+        es = EarlyStopping(monitor='val_loss', mode="min", patience=10)
         self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=250, verbose=0, callbacks=[es])
 
 

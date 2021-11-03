@@ -29,7 +29,7 @@ class Split:
         self.new_key_value = 0
         self.embed_f = embed_f
 
-    def get_X_y(self, lst, limit_num_sents):
+    def get_X_y(self, lst, limit_num_sents=None):
         """
         Splits a part (contained in lst) of dataset into sentences and intents.
 
@@ -225,13 +225,13 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
 
             for decision_node in local_data_train.keys():
                 print(decision_node)
-                dataset['train'] = local_data_train[decision_node]
-                dataset['val'] = local_data_val[decision_node]
-                dataset['test'] = local_data_test[decision_node]
+                dataset['train'] = local_data_train[decision_node] + local_data_test[decision_node]
+                dataset['val'] = local_data_test[decision_node]
+                dataset['test'] = local_data_val[decision_node]
 
-                dataset['global_train'] = global_data_train[decision_node]
-                dataset['global_val'] = global_data_valid[decision_node]
-                dataset['global_test'] = global_data_test[decision_node]
+                dataset['global_train'] = global_data_train[decision_node] + global_data_test[decision_node]
+                dataset['global_val'] = global_data_test[decision_node]
+                dataset['global_test'] = global_data_valid[decision_node]
 
                 dataset["local_ood"] = local_ood[decision_node]
                 dataset["global_ood"] = global_ood[decision_node]

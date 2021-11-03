@@ -16,54 +16,8 @@ import numpy as np
 class Testing:
     """Used to test the results of classification."""
 
-    def __init__(self, model, X_test, y_test, model_name: str, oos_label, bin_model=None, bin_oos_label=None):
-        self.model = model
-        self.X_test = X_test  # tf.Tensor
-        self.y_test = y_test  # tf.Tensor
-        self.oos_label = oos_label  # number
-        self.model_name = model_name
-        self.bin_model = bin_model
-        self.bin_oos_label = bin_oos_label
-
-    def test_train(self):
-        accuracy_correct, accuracy_out_of = 0, 0
-        recall_correct, recall_out_of = 0, 0
-
-        tp, tn, fp, fn = 0, 0, 0, 0
-
-        pred_labels = self.model.predict(self.X_test)
-
-        for pred_label, true_label in zip(pred_labels, self.y_test):
-
-            # the following set of conditions is the same for all testing methods
-            if true_label != self.oos_label:
-                if pred_label == true_label:
-                    accuracy_correct += 1
-
-                if pred_label != self.oos_label:
-                    tn += 1
-                else:
-                    fp += 1
-
-                accuracy_out_of += 1
-            else:
-                if pred_label == true_label:
-                    recall_correct += 1
-                    tp += 1
-                else:
-                    fn += 1
-
-                recall_out_of += 1
-
-        accuracy = accuracy_correct / accuracy_out_of * 100
-        recall = recall_correct / recall_out_of * 100
-
-        far = fn / (tp + fn) * 100  # false acceptance rate
-        frr = fp / (fp + tn) * 100  # false recognition rate
-
-        return {'accuracy': round(accuracy, 1), 'recall': round(recall, 1), 'far': round(far, 1), 'frr': round(frr, 1)}
-
-    def test_threshold(self, threshold: float, focus: str):
+    @staticmethod
+    def test_threshold(model , X_test, y_test, oos_label, threshold: float, focus: str):
         if focus == "IND":
             accuracy, frr = 0, 0
             accuracy_out_of = 0
@@ -73,32 +27,32 @@ class Testing:
 
         tp, tn, fp, fn = 0, 0, 0, 0
 
-        pred_probs = self.model.predict_proba(
-            self.X_test)  # returns numpy array
+        pred_probs = model.predict_proba(
+            X_test)  # returns numpy array
 
         pred_labels = np.argmax(pred_probs, axis=1)
         pred_similarities = np.take_along_axis(pred_probs, indices=np.expand_dims(pred_labels, axis=1), axis=1).squeeze()
 
-        for pred_label, pred_similarity, true_label in zip(pred_labels, pred_similarities, self.y_test):
+        for pred_label, pred_similarity, true_label in zip(pred_labels, pred_similarities, y_test):
             if pred_similarity < threshold:
-                pred_label = self.oos_label
+                pred_label = oos_label
 
             # the following set of conditions is the same for all testing methods
             if focus == "IND":
-                if pred_label == true_label and true_label != self.oos_label:
+                if pred_label == true_label and true_label != oos_label:
                     accuracy += 1
 
-                if pred_label != self.oos_label and true_label != self.oos_label:
+                if pred_label != oos_label and true_label != oos_label:
                     tn += 1
-                elif pred_label == self.oos_label and true_label != self.oos_label:
+                elif pred_label == oos_label and true_label != oos_label:
                     fp += 1
                 accuracy_out_of += 1
 
             elif focus == "OOD" or focus == "GARBAGE":
-                if pred_label == true_label and true_label == self.oos_label:
+                if pred_label == true_label and true_label == oos_label:
                     recall += 1
                     tp += 1
-                elif pred_label != true_label and true_label == self.oos_label:
+                elif pred_label != true_label and true_label == oos_label:
                     fn += 1
                 recall_out_of += 1
 
@@ -112,45 +66,45 @@ class Testing:
             far = fn / (tp + fn) * 100  # false acceptance rate
             return {'recall': round(overall_recall, 1), 'far': round(far, 1)}
 
-    def test_binary(self):
-        accuracy_correct, accuracy_out_of = 0, 0
-        recall_correct, recall_out_of = 0, 0
+    @staticmethod
+    def test_illusionist(y_pred, y_test, oos_label, focus: str):
+        if focus == "IND":
+            accuracy, frr = 0, 0
+            accuracy_out_of = 0
+        elif focus == "OOD" or focus == "GARBAGE":
+            recall, far = 0, 0
+            recall_out_of = 0
 
         tp, tn, fp, fn = 0, 0, 0, 0
 
-        pred_bin_labels = self.bin_model.predict(self.X_test)
-        pred_multi_labels = self.model.predict(self.X_test)
+        pred_labels = y_pred
 
-        for pred_bin_label, pred_multi_label, true_label in zip(pred_bin_labels, pred_multi_labels, self.y_test):
-            if pred_bin_label != self.bin_oos_label:
-                pred_label = pred_multi_label
-            else:
-                pred_label = self.oos_label
-
+        for pred_label, true_label in zip(pred_labels, y_test):
             # the following set of conditions is the same for all testing methods
-            if true_label != self.oos_label:
-                if pred_label == true_label:
-                    accuracy_correct += 1
+            if focus == "IND":
+                if pred_label == true_label and true_label != oos_label:
+                    accuracy += 1
 
-                if pred_label != self.oos_label:
+                if pred_label != oos_label and true_label != oos_label:
                     tn += 1
-                else:
+                elif pred_label == oos_label and true_label != oos_label:
                     fp += 1
-
                 accuracy_out_of += 1
-            else:
-                if pred_label == true_label:
-                    recall_correct += 1
-                    tp += 1
-                else:
-                    fn += 1
 
+            elif focus == "OOD" or focus == "GARBAGE":
+                if pred_label == oos_label:
+                    recall += 1
+                    tp += 1
+                elif pred_label != oos_label:
+                    fn += 1
                 recall_out_of += 1
 
-        accuracy = accuracy_correct / accuracy_out_of * 100
-        recall = recall_correct / recall_out_of * 100
+        if focus == "IND":
+            overall_accuracy = accuracy / accuracy_out_of * 100 # IND accuracy
+            frr = fp / (fp + tn) * 100  # false recognition rate
+            return {'accuracy': round(overall_accuracy, 1), 'frr': round(frr, 1)}
 
-        far = fn / (tp + fn) * 100  # false acceptance rate
-        frr = fp / (fp + tn) * 100  # false recognition rate
-
-        return {'accuracy': round(accuracy, 1), 'recall': round(recall, 1), 'far': round(far, 1), 'frr': round(frr, 1)}
+        elif focus == "OOD" or focus == "GARBAGE":
+            overall_recall = recall / recall_out_of * 100 # ood recall
+            far = fn / (tp + fn) * 100  # false acceptance rate
+            return {'recall': round(overall_recall, 1), 'far': round(far, 1)}
