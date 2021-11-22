@@ -78,18 +78,21 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
     # if threshold is None:
     #     threshold = find_best_threshold(val_predictions_labels, split.intents_dct['ood'])
 
-    threshold = 0.97
+    threshold = 0.0
     ood_thresholds = {}
 
-    sim = np.inner(X_train, X_train)
+    # sim = np.inner(X_train, X_train)
+    # for idx, cls in enumerate(np.unique(y_train)):
+    #     second_smallest = np.argsort(-sim[y_train.numpy().squeeze() == idx])[:, 1]
+    #     if second_smallest.shape[0] <= 1:
+    #         second_smallest_sim = [threshold]
+    #     else:
+    #         second_smallest_sim = np.take(sim[y_train.numpy().squeeze() == idx], second_smallest, axis=1)[:, 1]
+    #         # second_smallest_sim = list(map(lambda x: x if x > 0.0 else 0.0, second_smallest_sim))
+    #     ood_thresholds[idx] = np.average(second_smallest_sim)
+
     for idx, cls in enumerate(np.unique(y_train)):
-        second_smallest = np.argsort(-sim[y_train.numpy().squeeze() == idx])[:, 1]
-        if second_smallest.shape[0] <= 1:
-            second_smallest_sim = [threshold]
-        else:
-            second_smallest_sim = np.take(sim, second_smallest, axis=1)[:, 1]
-            second_smallest_sim = list(map(lambda x: x if x > 0.5 else 0.5, second_smallest_sim))
-        ood_thresholds[idx] = np.average(second_smallest_sim)
+        ood_thresholds[idx] = threshold
 
     end_time_train = time.time()
 
@@ -102,7 +105,6 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
     # Split dataset
     X_test, y_test = split.get_X_y(dataset['test'], limit_num_sents=None)
     corr_local = np.inner(X_test, X_train)
-    corr_local_transpose = corr_local.transpose()
     corr_global = np.inner(X_test, X_global)
     predictions = []
     for idx in range(len(X_test)):
@@ -110,7 +112,7 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
             pred_probs = model.predict_proba(X_test[idx].numpy().reshape(1, -1))
             match = False
             for max_idx in np.argsort(-pred_probs).squeeze():
-                if max(corr_local[max_idx][y_train.numpy().squeeze() == max_idx]) > ood_thresholds[max_idx]:
+                if corr_local.transpose()[y_train.numpy().squeeze() == max_idx].max() > ood_thresholds[max_idx]:
                     predictions.append(int(max_idx))
                     match = True
                     break
@@ -120,39 +122,55 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
         else:
             predictions.append(split.intents_dct['ood'])
 
-    results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'],
-                                                                       focus="IND")
+    results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="IND")
 
     # # # Split dataset
-    # X_test, y_test = split.get_X_y(dataset['global_val'] + dataset['global_test'], limit_num_sents=None)
-    # corr_local = np.inner(X_test, X_train)
-    # corr_global = np.inner(X_test, X_global)
-    # predictions = []
-    # for idx in range(len(X_test)):
-    #     if max(corr_local[idx]) > max(corr_global[idx]) and max(corr_local[idx]) > threshold:
-    #         pred_probs = model.predict_proba(X_test[idx].numpy().reshape(1,-1))
-    #         predictions.append(np.argmax(pred_probs))
-    #     else:
-    #         predictions.append(split.intents_dct['ood'])
+    X_test, _ = split.get_X_y(dataset['global_test'], limit_num_sents=None)
+    y_test = [999] * len(X_test)
+
+    corr_local = np.inner(X_test, X_train)
+    corr_global = np.inner(X_test, X_global)
+    predictions = []
+    for idx in range(len(X_test)):
+        if corr_local[idx].max() > corr_global[idx].max():
+            pred_probs = model.predict_proba(X_test[idx].numpy().reshape(1, -1))
+            match = False
+            for max_idx in np.argsort(-pred_probs).squeeze():
+                if corr_local.transpose()[y_train.numpy().squeeze() == max_idx].max() > ood_thresholds[max_idx]:
+                    predictions.append(998)
+                    match = True
+                    break
+
+            if match is False:
+                predictions.append(split.intents_dct['ood'])
+        else:
+            if corr_global[idx].max() > threshold:
+                predictions.append(999)
+            else:
+                predictions.append(split.intents_dct['ood'])
+
+    results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="IND")
+
     #
-    # results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="OOD")
     #
-    #
-    # #
-    # # # Split dataset
-    # X_test, y_test = split.get_X_y(dataset['global_ood'], limit_num_sents=None)
-    # # X_test, y_test = split.get_X_y(dataset['global_train'] + dataset['global_val'] + dataset['global_test'], limit_num_sents=None)
-    # corr_local = np.inner(X_test, X_train)
-    # corr_global = np.inner(X_test, X_global)
-    # predictions = []
-    # for idx in range(len(X_test)):
-    #     if max(corr_local[idx]) > max(corr_global[idx]) and max(corr_local[idx]) > threshold:
-    #         pred_probs = model.predict_proba(X_test[idx].numpy().reshape(1,-1))
-    #         predictions.append(np.argmax(pred_probs))
-    #     else:
-    #         predictions.append(split.intents_dct['ood'])
-    #
-    # results_dct["results"]["global_ood"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="OOD")
+    # # Split dataset
+    X_test, _ = split.get_X_y(dataset['global_ood'] + dataset["local_ood"] + dataset["garbage"], limit_num_sents=None)
+    y_test = [split.intents_dct['ood']] * len(X_test)
+
+    corr_local = np.inner(X_test, X_train)
+    corr_global = np.inner(X_test, X_global)
+    predictions = []
+    for idx in range(len(X_test)):
+        match = False
+        for max_idx in ood_thresholds.keys():
+            if corr_global.max() > ood_thresholds[max_idx] or corr_local.max() > ood_thresholds[max_idx]:
+                predictions.append(999)
+                match = True
+                break
+        if match is False:
+            predictions.append(split.intents_dct['ood'])
+
+    results_dct["results"]["ood"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="OOD")
     #
     # #
     # # # Split dataset

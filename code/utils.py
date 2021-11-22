@@ -213,8 +213,8 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
             local_data_val = get_intent(dialogue_path, key="val", level="local")
             local_data_test = get_intent(dialogue_path, key="test", level="local")
 
-            global_data_train = get_intent(dialogue_path, key="test", level="global")
-            global_data_valid = get_intent(dialogue_path, key="test", level="global")
+            global_data_train = get_intent(dialogue_path, key="train", level="global")
+            global_data_valid = get_intent(dialogue_path, key="val", level="global")
             global_data_test = get_intent(dialogue_path, key="test", level="global")
 
             local_ood = get_ood(dialogue_path, level="local")
@@ -225,13 +225,13 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
 
             for decision_node in local_data_train.keys():
                 print(decision_node)
-                dataset['train'] = local_data_train[decision_node] + local_data_test[decision_node]
-                dataset['val'] = local_data_test[decision_node]
-                dataset['test'] = local_data_val[decision_node]
+                dataset['train'] = local_data_train[decision_node]
+                dataset['val'] = local_data_val[decision_node]
+                dataset['test'] = local_data_test[decision_node]
 
-                dataset['global_train'] = global_data_train[decision_node] + global_data_test[decision_node]
-                dataset['global_val'] = global_data_test[decision_node]
-                dataset['global_test'] = global_data_valid[decision_node]
+                dataset['global_train'] = global_data_train[decision_node]
+                dataset['global_val'] = global_data_valid[decision_node]
+                dataset['global_test'] = global_data_test[decision_node]
 
                 dataset["local_ood"] = local_ood[decision_node]
                 dataset["global_ood"] = global_ood[decision_node]

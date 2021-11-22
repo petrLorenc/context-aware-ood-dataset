@@ -3,6 +3,7 @@ import wandb
 from utils import print_results, iterative_evalutation
 from CosineSimilarity import CosineSimilarity
 from NeuralNets import BaselineNNExtraLayer, OwnLogisticRegression
+from SklearnModels import SklearnLogisticRegression
 
 import tensorflow_hub as hub
 from sentence_transformers import SentenceTransformer
@@ -28,9 +29,10 @@ imports = []
 from ood_illusionist import evaluate
 #
 imports.append((evaluate, [
-    OwnLogisticRegression(),
-    # BaselineNNExtraLayer()
-    # CosineSimilarity() # not for testing illusionist
+    SklearnLogisticRegression(),
+    # OwnLogisticRegression(),
+    # BaselineNNExtraLayer(),
+    # CosineSimilarity(),
 ]))
 
 dataset_name = 'ALQUIST'
@@ -53,9 +55,9 @@ categories = [
 
 embedding_functions = {}  # uncomment them one by one when measuring memory usage or pre-training time
 # embedding_functions['use_dan'] = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
-embedding_functions['fasttext'] = FastTextSW(model_data_path="../data/embeddings/wiki_en_50k.pickle", sw_data_path="../data/embeddings/wiki_en_sw_100k.pickle")
-embedding_functions['use_dan'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_4")
-# embedding_functions['use_dan'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")
+# embedding_functions['fasttext'] = FastTextSW(model_data_path="../data/embeddings/wiki_en_50k.pickle", sw_data_path="../data/embeddings/wiki_en_sw_100k.pickle")
+# embedding_functions['use_dan'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_4")
+embedding_functions['use_dan_fine_tuned'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")
 # embedding_functions['use_tran'] = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
 # embedding_functions['use_tran'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_5")
 # embedding_functions['sbert'] = SentenceTransformer('stsb-roberta-base').encode

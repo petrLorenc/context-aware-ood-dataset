@@ -82,14 +82,15 @@ class Testing:
         for pred_label, true_label in zip(pred_labels, y_test):
             # the following set of conditions is the same for all testing methods
             if focus == "IND":
-                if pred_label == true_label and true_label != oos_label:
-                    accuracy += 1
+                if true_label != oos_label:
+                    if pred_label == true_label:
+                        accuracy += 1
 
-                if pred_label != oos_label and true_label != oos_label:
-                    tn += 1
-                elif pred_label == oos_label and true_label != oos_label:
-                    fp += 1
-                accuracy_out_of += 1
+                    if pred_label != oos_label:
+                        tn += 1
+                    elif pred_label == oos_label:
+                        fp += 1
+                    accuracy_out_of += 1
 
             elif focus == "OOD" or focus == "GARBAGE":
                 if pred_label == oos_label:

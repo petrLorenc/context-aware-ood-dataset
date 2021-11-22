@@ -54,8 +54,8 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
     start_time_train = time.time()
 
     # Split dataset
-    X_train, y_train = split.get_X_y(dataset['train'], limit_num_sents=limit_num_sents)
-    X_val, y_val = split.get_X_y(dataset['val'], limit_num_sents=limit_num_sents)
+    X_train, y_train = split.get_X_y(dataset['train'] + dataset["global_train"], limit_num_sents=limit_num_sents)
+    X_val, y_val = split.get_X_y(dataset['val'] + dataset["global_val"], limit_num_sents=limit_num_sents)
 
     # Train
     model.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
@@ -90,24 +90,25 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
     results_dct["results"]["local_intents"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold, focus="IND")
 
     # Split dataset
-    X_test, y_test = split.get_X_y(dataset['global_train'] + dataset['global_val'] + dataset['global_test'], limit_num_sents=None)
+    X_test, y_test = split.get_X_y(dataset['global_test'], limit_num_sents=None)
+    # y_test = [split.intents_dct['ood']] * len(X_test)
     # Test
-    results_dct["results"]["global_intents"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold, focus="OOD")
+    results_dct["results"]["global_intents"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold, focus="IND")
 
-    # Split dataset
-    X_test, y_test = split.get_X_y(dataset['global_ood'], limit_num_sents=None)
-    # Test
-    results_dct["results"]["global_ood"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold,  focus="OOD")
-
-    # Split dataset
-    X_test, y_test = split.get_X_y(dataset['local_ood'], limit_num_sents=None)
-    # Test
-    results_dct["results"]["local_ood"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold,  focus="OOD")
-
-    # Split dataset
-    X_test, y_test = split.get_X_y(dataset['garbage'], limit_num_sents=None)
-    # Test
-    results_dct["results"]["garbage"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold,  focus="GARBAGE")
+    # # Split dataset
+    # X_test, y_test = split.get_X_y(dataset['global_ood'], limit_num_sents=None)
+    # # Test
+    # results_dct["results"]["global_ood"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold,  focus="OOD")
+    #
+    # # Split dataset
+    # X_test, y_test = split.get_X_y(dataset['local_ood'], limit_num_sents=None)
+    # # Test
+    # results_dct["results"]["local_ood"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold,  focus="OOD")
+    #
+    # # Split dataset
+    # X_test, y_test = split.get_X_y(dataset['garbage'], limit_num_sents=None)
+    # # Test
+    # results_dct["results"]["garbage"] = Testing.test_threshold(model, X_test, y_test, split.intents_dct['ood'], threshold,  focus="GARBAGE")
 
     end_time_inference = time.time()
 
