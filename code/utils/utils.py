@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import sklearn
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
+from constants import ROOT_DIR
+
 EXTRA_LAYER_ACT_F = tf.keras.activations.relu  # specifies the activation function of the extra layer in NNs
 NEEDS_VAL = ['BaselineNN', 'BaselineNNExtraLayer']
-RESULTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'results')
 
 
 class Split:
@@ -29,7 +30,7 @@ class Split:
         self.new_key_value = 0
         self.embed_f = embed_f
 
-    def get_X_y(self, lst, limit_num_sents=None):
+    def get_X_y(self, lst, limit_num_sents=None, raw=False):
         """
         Splits a part (contained in lst) of dataset into sentences and intents.
 
@@ -63,11 +64,13 @@ class Split:
             X.append(sent)
             y.append(self.intents_dct[label])
 
-        if self.embed_f is not None:
-            X = self.embed_f(X)
-            X = tf.convert_to_tensor(X, dtype='float32')
+        if not raw:
+            if self.embed_f is not None:
+                if len(X) != 0:
+                    X = self.embed_f(X)
+                X = tf.convert_to_tensor(X, dtype='float32')
 
-        y = tf.convert_to_tensor(y, dtype='int32')
+            y = tf.convert_to_tensor(y, dtype='int32')
 
         return X, y
 
@@ -80,7 +83,7 @@ def print_results(dataset_name: str, model_name: str, emb_name: str, results_dct
 
 def get_unsplit_Xy_ID_OOD(dialogue_path, key):
     category = dialogue_path.split(sep=os.sep)[-2]
-    ood_path = os.path.join("..", "data", 'cross_ood', f'{category}_ood.json')
+    ood_path = os.path.join(ROOT_DIR, "data", 'cross_ood', f'{category}_ood.json')
     # ood_path = os.path.join("..", "data", 'clinc_ood', f'{category}_ood.json')
 
     with open(dialogue_path) as f:
@@ -128,7 +131,7 @@ def get_unsplit_Xy_ID_OOD(dialogue_path, key):
 def get_ood(dialogue_path, level):
     category = dialogue_path.split(sep=os.sep)[-2]
     # ood_path = os.path.join("..", "data", 'cross_ood', f'{category}_ood.json')
-    ood_path = os.path.join("..", "data", 'clinc_ood', f'{category}_ood.json')
+    ood_path = os.path.join(ROOT_DIR, "data", 'clinc_ood', f'{category}_ood.json')
 
     with open(dialogue_path) as f:
         # print(dialogue_path)
@@ -172,13 +175,16 @@ def get_intent(dialogue_path, key, level):
 
         if level == "local":
             for intent in dialogue['links'][str(node)]:
-                if str(intent) not in dialogue['intents'].keys():
+                if str(intent) not in dialogue['intents'].keys() or key not in dialogue['intents'][str(intent)] :
                     continue
 
                 for sent in dialogue['intents'][str(intent)][key]:
                     intents_decision_node[node].append([sent, str(intent)])
         elif level == "global":
             for intent in dialogue['globalIntents']:
+                if key not in dialogue['globalIntents'][intent]:
+                    continue
+
                 for sent in dialogue['globalIntents'][intent][key]:
                     intents_decision_node[node].append([sent, "global"])
         else:
@@ -189,19 +195,19 @@ def get_intent(dialogue_path, key, level):
 
 def get_garbage():
     garbages = []
-    with open(os.path.join("..", 'data', "garbage", "garbage.txt"), "r") as f:
+    with open(os.path.join(ROOT_DIR, 'data', "garbage", "garbage.txt"), "r") as f:
         for sent in f.readlines():
             garbages.append([sent.strip(), "garbage"])
     return garbages
 
 
-def iterative_evalutation(categories, evaluate, model, model_name, emb_name, embed_f, limit_num_sents, find_best_threshold_fn):
+def iterative_evalutation(categories, evaluate, model, model_name, emb_name, embed_f, limit_num_sents, find_best_threshold_fn, test_label="test"):
     original_emb_name = emb_name
     dct_results_lst = []
     total_time_pretraining = 0
 
     for cat in categories:
-        cat_path = os.path.join("..", 'data', "dialogues", cat)
+        cat_path = os.path.join(ROOT_DIR,  'data', "dialogues", cat)
         dataset_paths = [os.path.join(cat_path, ds) for ds in os.listdir(cat_path)]
 
         for dialogue_path in dataset_paths:
@@ -211,11 +217,11 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
 
             local_data_train = get_intent(dialogue_path, key="train", level="local")
             local_data_val = get_intent(dialogue_path, key="val", level="local")
-            local_data_test = get_intent(dialogue_path, key="test", level="local")
+            local_data_test = get_intent(dialogue_path, key=test_label, level="local")
 
             global_data_train = get_intent(dialogue_path, key="train", level="global")
             global_data_valid = get_intent(dialogue_path, key="val", level="global")
-            global_data_test = get_intent(dialogue_path, key="test", level="global")
+            global_data_test = get_intent(dialogue_path, key=test_label, level="global")
 
             local_ood = get_ood(dialogue_path, level="local")
             global_ood = get_ood(dialogue_path, level="global")

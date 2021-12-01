@@ -1,5 +1,5 @@
-from utils import Split, NEEDS_VAL
-from testing import Testing
+from utils import Split
+from utils.testing import Testing
 
 import time, psutil
 import numpy as np

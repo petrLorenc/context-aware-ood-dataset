@@ -1,9 +1,17 @@
+GAMES
 01
 I was wondering, is there a game that you always keep coming back to?
 I was wondering, what game do you have the best memories of?
-02
+02		
 Do you buy games on a platform, or in a brick-and-mortar store?
 When buying a game, do you prefer a physical, or a digital version?
+06
+Do you prefer playing against the computer, or against other humans?
+36
+What is your favorite game?
+
+
+FREETIME
 03
 What did you do yesterday?
 How did you spend your free time yesterday?
@@ -12,56 +20,119 @@ What are your plans for tomorrow?
 What are you planning for tomorrow?
 What are you doing tomorrow?
 Have you already decided what are you going to do tomorrow?
-05
-What sport is your favorite?
-What sport do you like the most?
-What's your favorite sport?
-06
-Do you prefer playing against the computer, or against other humans?
-07
-What food did you hate when you were little? I heard that broccoli is quite unpopular.
 08
 Do you think mass tourism helps, or hurts cities in general?
 09
 Who is your favorite street artist?
-10
-Are you watching the Olympics in Tokyo that are happening now?
-11
-What's your favorite animal? 
-12
-What's your favorite drink?
-13
-Do you read printed books, or use an e-book reader?
-Do you prefer reading a printed book, or using an e-book reader?
-14
-Do you usually eat out, or at home?
-15
-Who's your favorite literary author?
-Who's your favorite writer?
+
 16
 what do you do to relax?
 17
 What are your plans for the coming weekend?
 What are you planning for the weekend?
 What are you doing this weekend?
-18
-What do you think is the most important invention ever created?
-19
-What's your favorite color for clothes?
-Which color do you like on your clothes?
-What do you think is the most flattering color to wear?
-20
-What's the last song that you've liked a lot? 
-21
-Do you consider yourself to be punctual?
-22
-Do you come from a big family?
-Do you have a big family?
-23
-If you woke up tomorrow as a scientist, what would you like to invent?
 24
 Do you miss any cultural events, now that many were cancelled?
 25
 What do you like to do in your freetime?
 What are your hobbies?
 How do you spend your freetime?
+29
+What's your favorite ice cream flavor?
+43
+What is your favorite day of the week?
+
+
+SPORTS
+05
+What sport is your favorite?
+What sport do you like the most?
+What's your favorite sport?
+10
+Are you watching the Olympics in Tokyo that are happening now?
+37
+If you could be the best in the world in any sport, which sport would you choose?
+
+FOODS
+07
+What food did you hate when you were little? I heard that broccoli is quite unpopular.
+12
+What's your favorite drink?
+14
+Do you usually eat out, or at home?
+31
+What did you have for breakfast?
+44
+What is your favorite food?
+
+
+BOOKS
+13
+Do you read printed books, or use an e-book reader?
+Do you prefer reading a printed book, or using an e-book reader?
+15
+Who's your favorite literary author?
+Who's your favorite writer?
+38
+What's your favorite book?
+What's a book that you would take to a desert island?
+What's a book that you really enjoyed reading?
+39
+Where do you prefer to read books?
+Where do you usually read books?
+
+SCIENCE
+18
+What do you think is the most important invention ever created?
+23
+If you woke up tomorrow as a scientist, what would you like to invent?
+35
+What's your favorite science field?
+
+
+FASHION
+19
+What's your favorite color for clothes?
+Which color do you like on your clothes?
+What do you think is the most flattering color to wear?
+32
+Which two things would you never wear together?
+33
+What nice piece of clothing have you bought recently?
+
+
+MUSIC
+20
+What's the last song that you've liked a lot? 
+30
+What kind of music do you like the most?
+What's your favorite music genre?
+
+
+GENERAL
+21
+Do you consider yourself to be punctual?
+22
+Do you come from a big family?
+Do you have a big family?
+
+
+MOVIES
+26
+What new movie are you interested in seeing?
+What new movie are you looking forward to?
+27
+Do you prefer going to the cinema or watching movies at home?
+28
+Which character from the movie you'd wanna be friends with in real life?
+34
+I was wondering, what's your favorite movie?
+
+ANIMALS
+40
+If you could turn into an animal, which one would you choose?
+If you could be an animal, what would you choose to be?
+41
+What's your favorite animal? 
+42
+What animal do you think is the most dangerous?

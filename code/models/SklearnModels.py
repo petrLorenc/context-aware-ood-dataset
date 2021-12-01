@@ -1,8 +1,5 @@
-from AbstractNeuralNet import AbstractSklearnModel
+from models.AbstractNeuralNet import AbstractSklearnModel
 from sklearn.linear_model import LogisticRegression
-
-import tensorflow as tf
-from tensorflow.keras import layers, activations
 
 
 class SklearnLogisticRegression(AbstractSklearnModel):

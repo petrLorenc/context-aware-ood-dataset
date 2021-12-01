@@ -7,7 +7,7 @@ new_format_template = {
 }
 
 idx = 0
-for subdir, dirs, files in os.walk("../data/dialogues/all/"):
+for subdir, dirs, files in os.walk("../data/zaloha/all/"):
     for filename in files:
         filepath = os.path.join(subdir, filename)
 

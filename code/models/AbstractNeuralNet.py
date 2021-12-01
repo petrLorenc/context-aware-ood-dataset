@@ -1,4 +1,4 @@
-from utils import EXTRA_LAYER_ACT_F
+from utils.utils import EXTRA_LAYER_ACT_F
 
 from abc import ABC, abstractmethod
 import tensorflow as tf

@@ -1,14 +1,11 @@
 import wandb
 
-from utils import print_results, iterative_evalutation
-from CosineSimilarity import CosineSimilarity
-from NeuralNets import BaselineNNExtraLayer, OwnLogisticRegression
-from SklearnModels import SklearnLogisticRegression
+from utils.utils import print_results, iterative_evalutation
+from models.SklearnModels import SklearnLogisticRegression
 
-import tensorflow_hub as hub
-from sentence_transformers import SentenceTransformer
-from sklearn.linear_model import LogisticRegression
 from custom_embeddings.fasttext import FastTextSW
+# from custom_embeddings.universal_sentence_encoder_lite import USE_lite
+
 
 RANDOM_SELECTION = False  # am I testing using the random selection of IN intents?
 repetitions = 5  # number of evaluations when using random selection
@@ -26,7 +23,8 @@ imports = []
 # ]))
 # ------------------------------------------------------------
 # from ood_threshold import evaluate
-from ood_illusionist import evaluate
+# from evaluate.local_illusionist import evaluate
+from evaluate.remote_illusionist import evaluate
 #
 imports.append((evaluate, [
     SklearnLogisticRegression(),
@@ -55,29 +53,47 @@ categories = [
 
 embedding_functions = {}  # uncomment them one by one when measuring memory usage or pre-training time
 # embedding_functions['use_dan'] = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+embedding_functions['remote'] = None
 # embedding_functions['fasttext'] = FastTextSW(model_data_path="../data/embeddings/wiki_en_50k.pickle", sw_data_path="../data/embeddings/wiki_en_sw_100k.pickle")
+# embedding_functions['use_lite'] = USE_lite()
 # embedding_functions['use_dan'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_4")
-embedding_functions['use_dan_fine_tuned'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")
+# embedding_functions['use_dan_fine_tuned'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")
 # embedding_functions['use_tran'] = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
 # embedding_functions['use_tran'] = hub.load("/media/petrlorenc/Data/universal-sentence-encoder_5")
 # embedding_functions['sbert'] = SentenceTransformer('stsb-roberta-base').encode
 
-for i in imports:
-    evaluate = i[0]
+enriching_keys = [""]
+# enriching_keys = ["random_char"]
+# enriching_keys = ["emoji"]
+# enriching_keys = ["spaces"]
+# enriching_keys = ["deletion"]
+# enriching_keys = ["insert"]
+# enriching_keys = ["swap"]
+# enriching_keys = ["uppercase"]
+# enriching_keys = ["regex"]
+# enriching_keys = ["end_char"]
+# enriching_keys = ["end_word"]
+# enriching_keys = ["", "random_char", "emoji", "spaces", "deletion", "insert", "swap", "uppercase", "regex", "end_char", "end_word"]
 
-    for emb_name, embed_f in embedding_functions.items():
-        for model in i[1]:
-            model_name = type(model).__name__
+for k in enriching_keys:
+    test_label = "test" + ("_" if k else "") + k
+    for i in imports:
+        evaluate = i[0]
 
-            wandb.init(project='robust-intent-recognition', entity='alquist')
-            config = wandb.config
-            config.dataset_name = dataset_name
-            config.model_name = model_name
-            config.emb_name = emb_name
+        for emb_name, embed_f in embedding_functions.items():
+            for model in i[1]:
+                model_name = type(model).__name__
 
-            results_dct, emb_name = iterative_evalutation(categories, evaluate, model, model_name, emb_name,
-                                                          embed_f, LIMIT_NUM_SENTS, model.threshold)
-            for k, v in results_dct.items():
-                wandb.log({k: v})
-            print_results(dataset_name, model_name, emb_name, results_dct)
-            wandb.finish()
+                wandb.init(project='robust-intent-recognition', entity='alquist')
+                config = wandb.config
+                config.dataset_name = dataset_name
+                config.model_name = model_name
+                config.emb_name = emb_name
+                config.test_type = test_label
+
+                results_dct, emb_name = iterative_evalutation(categories, evaluate, model, model_name, emb_name,
+                                                              embed_f, LIMIT_NUM_SENTS, model.threshold, test_label=test_label)
+                for k, v in results_dct.items():
+                    wandb.log({k: v})
+                print_results(dataset_name, model_name, emb_name, results_dct)
+                wandb.finish()

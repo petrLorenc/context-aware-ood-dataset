@@ -1,5 +1,5 @@
-from utils import Split, NEEDS_VAL
-from testing import Testing
+from utils.utils import Split
+from utils.testing import Testing
 
 import time, psutil
 import numpy as np
@@ -78,7 +78,7 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
     # if threshold is None:
     #     threshold = find_best_threshold(val_predictions_labels, split.intents_dct['ood'])
 
-    threshold = 0.0
+    threshold = 0.75
     ood_thresholds = {}
 
     # sim = np.inner(X_train, X_train)

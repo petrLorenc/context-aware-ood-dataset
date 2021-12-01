@@ -18,18 +18,6 @@ def get_subwords(word, nmin=3, nmax=6):
             for j in range(i + nmin, 1 + min(i + nmax, len(word)))]
 
 
-class FastText(CompressedEmbeddingBase):
-    """
-    Compressed FastText embedding algorithm.
-    :param path: where to look for model file
-    :param model: model file (model.pickle)
-    """
-
-    def __init__(self, model_data, **kwargs):
-        super(FastText, self).__init__('FastText', model_data)
-        self.alg = 'FastText'
-
-
 class FastTextSW(CompressedEmbeddingBase):
     """
     Compressed FastText embedding algorithm with sub-word information.

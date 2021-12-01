@@ -1,6 +1,5 @@
-from AbstractNeuralNet import AbstractNeuralNet
+from models.AbstractNeuralNet import AbstractNeuralNet
 from utils import EXTRA_LAYER_ACT_F
-from tensorflow.keras.callbacks import EarlyStopping
 
 import tensorflow as tf
 from tensorflow.keras import layers, activations
