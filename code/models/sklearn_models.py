@@ -1,4 +1,4 @@
-from models.AbstractNeuralNet import AbstractSklearnModel
+from models.abstract_neural_net import AbstractSklearnModel
 from sklearn.linear_model import LogisticRegression
 
 

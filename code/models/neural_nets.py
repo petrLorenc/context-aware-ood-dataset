@@ -1,5 +1,5 @@
-from models.AbstractNeuralNet import AbstractNeuralNet
-from utils import EXTRA_LAYER_ACT_F
+from models.abstract_neural_net import AbstractNeuralNet
+from utils.utils import EXTRA_LAYER_ACT_F
 
 import tensorflow as tf
 from tensorflow.keras import layers, activations

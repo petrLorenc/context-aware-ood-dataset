@@ -10,13 +10,32 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.model_selection import GridSearchCV
 
 
-class AbstractSklearnModel(ABC):
+class AbstractModel(ABC):
     def __init__(self):
         np.random.seed(7)  # set seed in order to have reproducible results
 
         self.model = None
         self.model_name = type(self).__name__
 
+    @staticmethod
+    def predict_with(model, X_test):
+        """Returns predictions with class labels."""
+
+        probs = model.predict_proba(X_test)
+        predictions = np.argmax(probs, axis=1)
+
+        return predictions
+
+    @staticmethod
+    def predict_proba_with(model, X_test):
+        """Returns probabilities of each label."""
+
+        probs = model.predict_proba(X_test)
+
+        return probs
+
+
+class AbstractSklearnModel(AbstractModel):
     @abstractmethod
     def create_model(self, emb_dim, num_classes):
         raise NotImplementedError('You have to create a model.')
@@ -38,6 +57,7 @@ class AbstractSklearnModel(ABC):
 
         clf.fit(X_train.numpy(), y_train.numpy())
         self.model = clf.best_estimator_
+        return self.model
 
     def predict(self, X_test):
         """Returns predictions with class labels."""
@@ -47,6 +67,8 @@ class AbstractSklearnModel(ABC):
 
         return predictions
 
+
+
     def predict_proba(self, X_test):
         """Returns probabilities of each label."""
 
@@ -55,12 +77,10 @@ class AbstractSklearnModel(ABC):
         return probs
 
 
-class AbstractNeuralNet(ABC):
+class AbstractNeuralNet(AbstractModel):
     def __init__(self, loss=losses.SparseCategoricalCrossentropy()):
-        tf.random.set_seed(7)  # set seed in order to have reproducible results
+        super().__init__()
 
-        self.model = None
-        self.model_name = type(self).__name__
         self.loss = loss
         self.oos_label = None  # used for CosFaceLofNN
 
@@ -89,9 +109,12 @@ class AbstractNeuralNet(ABC):
 
         return predictions
 
+
     def predict_proba(self, X_test):
         """Returns probabilities of each label."""
 
         probs = self.model.predict(X_test)
 
         return probs
+
+

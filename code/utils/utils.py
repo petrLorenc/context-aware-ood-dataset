@@ -186,7 +186,7 @@ def get_intent(dialogue_path, key, level):
                     continue
 
                 for sent in dialogue['globalIntents'][intent][key]:
-                    intents_decision_node[node].append([sent, "global"])
+                    intents_decision_node[node].append([sent, str(intent)])
         else:
             raise Exception(f"Unknown level {level}")
 
@@ -201,11 +201,8 @@ def get_garbage():
     return garbages
 
 
-def iterative_evalutation(categories, evaluate, model, model_name, emb_name, embed_f, limit_num_sents, find_best_threshold_fn, test_label="test"):
-    original_emb_name = emb_name
-    dct_results_lst = []
-    total_time_pretraining = 0
-
+def generate_dataset(categories, test_label):
+    # Prepare files
     for cat in categories:
         cat_path = os.path.join(ROOT_DIR,  'data', "dialogues", cat)
         dataset_paths = [os.path.join(cat_path, ds) for ds in os.listdir(cat_path)]
@@ -243,12 +240,11 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
                 dataset["global_ood"] = global_ood[decision_node]
                 dataset["garbage"] = garbage
 
-                # !!
-                results_dct = evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_threshold_fn)
-                dct_results_lst.append(results_dct)
-                print(results_dct)
-            print()
+                yield dataset
 
+
+def aggregate_results(dct_results_lst):
+    # Aggregate results
     results_dct = {}
     num_results = len(dct_results_lst)
 
@@ -268,12 +264,12 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
                 if "additional" not in results_dct:
                     results_dct["additional"] = {}
                 if key not in results_dct["additional"]:
-                    if key == "threshold":
+                    if key == "threshold_local" or key == "threshold_global" or key == "threshold":
                         results_dct["additional"][key] = []
                     else:
                         results_dct["additional"][key] = 0
 
-                if key == "threshold":
+                if key == "threshold_local" or key == "threshold_global" or key == "threshold":
                     results_dct["additional"][key].append(dct[key])
                 else:
                     results_dct["additional"][key] += dct[key]
@@ -281,11 +277,50 @@ def iterative_evalutation(categories, evaluate, model, model_name, emb_name, emb
     for level in results_dct:
         # if level not in ['additional']:  # keep track of total train and inference time
         for key in results_dct[level]:
-            if key != "threshold":
+            if key != "threshold_local" and key != "threshold_global" and key != "threshold":
                 results_dct[level][key] /= num_results
                 results_dct[level][key] = round(results_dct[level][key], 1)
 
-    if total_time_pretraining != 0:
-        results_dct["additional"]['time_pretraining'] = round(total_time_pretraining, 1)
+    return results_dct
 
-    return results_dct, emb_name
+
+def find_best_threshold(val_predictions_labels, oos_label):
+    """
+    Function used to find the best threshold in oos-threshold.
+    :param:            val_predictions_labels - prediction on the validation set, list
+                        oos_label - encodes oos label, int
+    :returns:           threshold - best threshold
+    """
+
+    # Initialize search for best threshold
+    thresholds = np.linspace(0, 1, 101)
+    previous_val_accuracy = 0
+    threshold = 0
+
+    # Find best threshold
+    for idx, tr in enumerate(thresholds):
+        val_accuracy_correct = 0
+        val_accuracy_out_of = 0
+
+        for pred, true_label in val_predictions_labels:
+            pred_label = pred[0]
+            similarity = pred[1]
+
+            if similarity < tr:
+                pred_label = oos_label
+
+            if pred_label == true_label:
+                val_accuracy_correct += 1
+
+            val_accuracy_out_of += 1
+
+        val_accuracy = val_accuracy_correct / val_accuracy_out_of
+
+        if val_accuracy < previous_val_accuracy:
+            threshold = thresholds[idx - 1]  # best threshold is the previous one
+            break
+
+        previous_val_accuracy = val_accuracy
+        threshold = tr
+
+    return threshold

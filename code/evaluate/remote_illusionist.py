@@ -10,8 +10,8 @@ DELETE_URL = "http://localhost:8090/intent/invalidate/<XY>?key=test"
 TRAIN_URL = "http://localhost:8095/training/models/<XY>?key=test"
 
 
-def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_threshold_fn):
-    split = Split(embed_f)
+def evaluate(dataset, classification_model, embedding_model, limit_num_sents):
+    split = Split(None)
     threshold = 0.0
     # TRAINING
     start_time_train = time.time()
@@ -23,14 +23,15 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
         'auth_key': 'test',
         'model': {
             'name': 'test',
-            'algorithm': 'UniversalSentenceEncoder',
+            'embedding': embedding_model,
+            'algorithm': "hybrid",
             'lang': 'en',
             'use_tfidf': False,
             'approach': "hybrid"
         },
         'qa': {k: {"questions": [sentence for sentence, v in zip(X_train, y_train) if v == k], "answer": k, "threshold": threshold} for k in list(set(y_train))}
     }
-    response = requests.post(TRAIN_URL.replace("<XY>", "local"), json=training_template_local).json()
+    _ = requests.post(TRAIN_URL.replace("<XY>", "local"), json=training_template_local).json()
 
     X_global, y_global = split.get_X_y(dataset["global_train"], raw=True)
     training_template_global = {
@@ -38,14 +39,15 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
         'auth_key': 'test',
         'model': {
             'name': 'test',
-            'algorithm': 'UniversalSentenceEncoder',
+            'embedding': embedding_model,
+            'algorithm': "hybrid",
             'lang': 'en',
             'use_tfidf': False,
             'approach': "hybrid"
         },
         'qa': {k: {"questions": [sentence for sentence, v in zip(X_global, y_global) if v == k], "answer": k, "threshold": threshold} for k in list(set(y_global))}
     }
-    response = requests.post(TRAIN_URL.replace("<XY>", "global"), json=training_template_global).json()
+    _ = requests.post(TRAIN_URL.replace("<XY>", "global"), json=training_template_global).json()
 
     end_time_train = time.time()
 
@@ -102,7 +104,7 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
 
     # # Split dataset
     X_test, _ = split.get_X_y(dataset['global_ood'] + dataset["local_ood"] + dataset["garbage"], limit_num_sents=None)
-    y_test = [999] * len(X_test)
+    y_test = [split.intents_dct['ood']] * len(X_test)
     predictions = []
 
     for test_sentence in X_test:
@@ -116,7 +118,7 @@ def evaluate(dataset, model, model_name, embed_f, limit_num_sents, find_best_thr
         }).json()
 
         if response[0]["answer"] == "outofdomain":
-            predictions.append(999)
+            predictions.append(split.intents_dct['ood'])
         else:
             predictions.append(-1)
 
