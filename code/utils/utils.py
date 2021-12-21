@@ -39,7 +39,6 @@ class Split:
         :returns:           X - sentences encoded as embeddings, tf.Tensor OR sentences, list
                             y - intents, tf.Tensor
         """
-
         X = []
         y = []
 

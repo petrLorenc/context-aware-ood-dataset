@@ -17,8 +17,7 @@ class AbstractModel(ABC):
         self.model = None
         self.model_name = type(self).__name__
 
-    @staticmethod
-    def predict_with(model, X_test):
+    def predict_with(self, model, X_test):
         """Returns predictions with class labels."""
 
         probs = model.predict_proba(X_test)
@@ -26,8 +25,7 @@ class AbstractModel(ABC):
 
         return predictions
 
-    @staticmethod
-    def predict_proba_with(model, X_test):
+    def predict_proba_with(self, model, X_test):
         """Returns probabilities of each label."""
 
         probs = model.predict_proba(X_test)
@@ -67,8 +65,6 @@ class AbstractSklearnModel(AbstractModel):
 
         return predictions
 
-
-
     def predict_proba(self, X_test):
         """Returns probabilities of each label."""
 
@@ -101,6 +97,8 @@ class AbstractNeuralNet(AbstractModel):
         es = EarlyStopping(monitor='val_loss', mode="min", patience=10)
         self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=250, verbose=0, callbacks=[es])
 
+        return self.model
+
     def predict(self, X_test):
         """Returns predictions with class labels."""
 
@@ -114,6 +112,21 @@ class AbstractNeuralNet(AbstractModel):
         """Returns probabilities of each label."""
 
         probs = self.model.predict(X_test)
+
+        return probs
+
+    def predict_with(self, model, X_test):
+        """Returns predictions with class labels."""
+
+        probs = model.predict(X_test)
+        predictions = np.argmax(probs, axis=1)
+
+        return predictions
+
+    def predict_proba_with(self, model, X_test):
+        """Returns probabilities of each label."""
+
+        probs = model.predict(X_test)
 
         return probs
 
