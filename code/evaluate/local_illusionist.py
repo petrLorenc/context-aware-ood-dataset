@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from models.abstract_neural_net import AbstractModel
 from utils.testing import Testing
-from utils.utils import Split
+from utils.utils import TransformToEmbeddings
 
 
 def find_best_threshold(X_train):
@@ -21,8 +21,8 @@ def find_best_threshold(X_train):
 
 
 def evaluate(dataset, classification_model, embedding_model, limit_num_sents, find_best_threshold_fn):
-    local_split = Split(embedding_model)
-    global_split = Split(embedding_model)
+    local_split = TransformToEmbeddings(embedding_model)
+    global_split = TransformToEmbeddings(embedding_model)
 
     # TRAINING
     start_time_train = time.time()

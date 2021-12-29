@@ -1,4 +1,4 @@
-from utils.utils import Split
+from utils.utils import TransformToEmbeddings
 from utils.testing import Testing
 
 import time, psutil
@@ -6,7 +6,7 @@ import numpy as np
 
 
 def evaluate(dataset, classification_model, embedding_model, limit_num_sents, find_best_threshold_fn):
-    split = Split(embedding_model)
+    split = TransformToEmbeddings(embedding_model)
 
     # TRAINING
     start_time_train = time.time()

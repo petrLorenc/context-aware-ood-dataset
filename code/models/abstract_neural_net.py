@@ -1,13 +1,8 @@
-from utils.utils import EXTRA_LAYER_ACT_F
-
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 import tensorflow as tf
-from tensorflow.keras import losses, layers
+from tensorflow.keras import losses
 from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
-import sklearn
-from sklearn.neighbors import LocalOutlierFactor
-from sklearn.model_selection import GridSearchCV
 
 
 class AbstractModel(ABC):
@@ -16,6 +11,18 @@ class AbstractModel(ABC):
 
         self.model = None
         self.model_name = type(self).__name__
+
+    @abstractmethod
+    def create_model(self, emb_dim, num_classes):
+        raise NotImplementedError('You have to create a model.')
+
+    @abstractmethod
+    def predict(self, X_test):
+        raise NotImplementedError('You have to create a model.')
+
+    @abstractmethod
+    def predict_proba(self, X_test):
+        raise NotImplementedError('You have to create a model.')
 
     def predict_with(self, model, X_test):
         """Returns predictions with class labels."""
@@ -33,56 +40,12 @@ class AbstractModel(ABC):
         return probs
 
 
-class AbstractSklearnModel(AbstractModel):
-    @abstractmethod
-    def create_model(self, emb_dim, num_classes):
-        raise NotImplementedError('You have to create a model.')
-
-    def fit(self, X_train, y_train, X_val, y_val):
-        emb_dim = X_train.shape[1]  # embedding dimension
-        num_classes = len(set(np.asarray(y_train)))  # number of classes
-
-        self.model = self.create_model(emb_dim, num_classes)
-
-        param_grid = {'C': [0.001, 1, 1000]}
-        clf = GridSearchCV(
-            estimator=self.model,
-            param_grid=param_grid,
-            cv=3,
-            refit=True,
-            # verbose=3
-            verbose=0)
-
-        clf.fit(X_train.numpy(), y_train.numpy())
-        self.model = clf.best_estimator_
-        return self.model
-
-    def predict(self, X_test):
-        """Returns predictions with class labels."""
-
-        probs = self.model.predict_proba(X_test)
-        predictions = np.argmax(probs, axis=1)
-
-        return predictions
-
-    def predict_proba(self, X_test):
-        """Returns probabilities of each label."""
-
-        probs = self.model.predict_proba(X_test)
-
-        return probs
-
-
-class AbstractNeuralNet(AbstractModel):
+class AbstractNeuralNet(AbstractModel, metaclass=ABCMeta):
     def __init__(self, loss=losses.SparseCategoricalCrossentropy()):
         super().__init__()
 
         self.loss = loss
         self.oos_label = None  # used for CosFaceLofNN
-
-    @abstractmethod
-    def create_model(self, emb_dim, num_classes):
-        raise NotImplementedError('You have to create a model.')
 
     def fit(self, X_train, y_train, X_val, y_val):
         emb_dim = X_train.shape[1]  # embedding dimension
@@ -107,7 +70,6 @@ class AbstractNeuralNet(AbstractModel):
 
         return predictions
 
-
     def predict_proba(self, X_test):
         """Returns probabilities of each label."""
 
@@ -129,5 +91,3 @@ class AbstractNeuralNet(AbstractModel):
         probs = model.predict(X_test)
 
         return probs
-
-

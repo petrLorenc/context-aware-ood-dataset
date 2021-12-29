@@ -1,4 +1,4 @@
-from utils.utils import Split
+from utils.utils import TransformToEmbeddings
 from utils.testing import Testing
 
 import time, psutil
@@ -11,7 +11,7 @@ TRAIN_URL = "http://localhost:8095/training/models/<XY>?key=test"
 
 
 def evaluate(dataset, classification_model, embedding_model, limit_num_sents):
-    split = Split(None)
+    split = TransformToEmbeddings(None)
     threshold = 0.0
     local_id = "local2"
     global_id = "global2"
