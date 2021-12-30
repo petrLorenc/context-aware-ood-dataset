@@ -7,7 +7,6 @@ from utils.dataset.generate import generate_dataset
 # from config.one_class_svm import imports
 from config.local_illusionist import imports
 
-dataset_name = 'ALQUIST'
 categories = [
     'animals',
     'books', 'education',
@@ -16,13 +15,13 @@ categories = [
     'sports', 'travel'
 ]
 
-# dataset_args = {"categories": categories, "datasetType": DatasetType.ORIGINAL}
-dataset_args = {"categories": {}, "datasetType": DatasetType.FLATTEN}
+# dataset_args = {"name": "OUR_DATASET", "categories": categories, "datasetType": DatasetType.ORIGINAL}
+# dataset_args = {"name": "OUR_DATASET", "categories": {}, "datasetType": DatasetType.FLATTEN}
 
 if __name__ == '__main__':
     for i in imports:
         evaluate_fn = i["evaluation_fn"]
-
+        dataset_args = i["dataset_args"]
         for embeddings in i["embeddings"]:
             emb_name = embeddings["embedding_name"]
             embedding_model = embeddings["embedding_model"]
@@ -38,7 +37,7 @@ if __name__ == '__main__':
 
                     wandb.init(project='robust-intent-recognition', entity='alquist')
                     config = wandb.config
-                    config.dataset_name = dataset_name
+                    config.dataset_name = dataset_args["name"]
                     config.model_name = model_name
                     config.emb_name = emb_name
                     config.test_type = test_label
@@ -46,7 +45,10 @@ if __name__ == '__main__':
 
                     dct_results_lst = []
 
-                    for dataset in generate_dataset(categories=dataset_args["categories"], test_label=test_label, datasetType=dataset_args["datasetType"]):
+                    for dataset in generate_dataset(categories=dataset_args["categories"],
+                                                    test_label=test_label,
+                                                    dataset_type=dataset_args["datasetType"],
+                                                    return_type=dataset_args["return_type"]):
                         args = i["evaluation_fn_arg"]
                         args["dataset"] = dataset
                         args["embedding_model"] = embedding_model
@@ -61,5 +63,5 @@ if __name__ == '__main__':
 
                     for k, v in results_dct.items():
                         wandb.log({k: v})
-                    print_results(dataset_name, model_name, emb_name, results_dct)
+                    print_results(dataset_args["name"], model_name, emb_name, results_dct)
                     wandb.finish()

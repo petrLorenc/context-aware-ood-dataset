@@ -1,7 +1,15 @@
 imports = []
 
 LIMIT_NUM_SENTS = None  # # either None (i.e. no limit) or int with value > 0 (i.e. maximal number of sentences per class).
+categories = [
+    'animals',
+    'books', 'education',
+    'fashion', 'food', 'habits',
+    'movies', 'music', 'science', 'smalltalk',
+    'sports', 'travel'
+]
 
+from utils.dataset.generate import DatasetType, DatasetReturnType
 from custom_embeddings.fasttext import FastTextSW
 from custom_embeddings.huggingface import HuggingFaceModel
 import tensorflow_hub as hub
@@ -21,9 +29,10 @@ imports.append({
         # {"embedding_name": "use5", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder_5")}
         # {"embedding_name": "use4_finetuned", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")}
         # {"embedding_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", "embedding_model": HuggingFaceModel(tokenizer_path="/media/petrlorenc/Data/hugging_face_models/paraphrase-multilingual-MiniLM-L12-v2", model_path="/media/petrlorenc/Data/hugging_face_models/paraphrase-multilingual-MiniLM-L12-v2")}
-
     ],
-    "test_keys": [""]
+    "test_keys": [""],
     # "test_keys": ["", "emoji", "spaces", "insert", "uppercase", "regex", "regex_2", "swap", "random_char"] # all chosen to study robustness
     # "test_keys": # enriching_keys = ["", "random_char", "emoji", "spaces", "deletion", "insert", "swap", "uppercase", "regex", "end_char", "end_word"] # all
+
+    "dataset_args": {"name": "OUR_DATASET", "categories": {}, "datasetType": DatasetType.FLATTEN, "return_type": DatasetReturnType.YIELD_SEPARATELY}
 })

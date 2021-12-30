@@ -1,7 +1,15 @@
 imports = []
 
 LIMIT_NUM_SENTS = None
+categories = [
+    'animals',
+    'books', 'education',
+    'fashion', 'food', 'habits',
+    'movies', 'music', 'science', 'smalltalk',
+    'sports', 'travel'
+]
 
+from utils.dataset.generate import DatasetType, DatasetReturnType
 from evaluate.threshold_based import evaluate
 from models.sklearn_models import SklearnLogisticRegression
 from models.neural_nets import OwnLogisticRegression, BaselineNNExtraLayer
@@ -19,7 +27,10 @@ imports.append({
         # {"embedding_name": "use4_finetuned", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder_fine")}
 
     ],
-    "test_keys": [""]
+    "test_keys": [""],
     # "test_keys": ["", "emoji", "spaces", "insert", "uppercase", "regex", "regex_2", "swap", "random_char"] # all chosen to study robustness
     # "test_keys": # enriching_keys = ["", "random_char", "emoji", "spaces", "deletion", "insert", "swap", "uppercase", "regex", "end_char", "end_word"] # all
+
+    "dataset_args": {"name": "OUR_DATASET", "categories": {}, "datasetType": DatasetType.FLATTEN, "return_type": DatasetReturnType.YIELD_SEPARATELY}
+
 })

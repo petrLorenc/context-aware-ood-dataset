@@ -14,6 +14,11 @@ class DatasetType(Enum):
     GENERAL = auto()
 
 
+class DatasetReturnType(Enum):
+    YIELD_SEPARATELY = auto()
+    RETURN_ALL = auto()
+
+
 class DatasetGenerator(ABC):
     def __init__(self, dialogue_path):
         self.dialogue_path = dialogue_path
@@ -147,17 +152,19 @@ class DatasetFlatten(DatasetGenerator):
         return garbages
 
 
-def generate_dataset(categories, test_label, datasetType: DatasetType = DatasetType.ORIGINAL):
-    datasetGenerator = None
-    if datasetType is DatasetType.ORIGINAL:
+def generate_dataset(categories,
+                     test_label,
+                     dataset_type: DatasetType = DatasetType.ORIGINAL,
+                     return_type: DatasetReturnType = DatasetReturnType.YIELD_SEPARATELY):
+    dataset_grouped = []
+    if dataset_type is DatasetType.ORIGINAL:
+
         # Prepare files
         for cat in categories:
             annotated_files_path = os.path.join(ROOT_DIR, 'data', "dialogues", cat)
             files_path = [os.path.join(annotated_files_path, ds) for ds in os.listdir(annotated_files_path)]
 
             for file_path in files_path:
-                # Xy_ID_tr, Xy_OOD_tr = get_unsplit_Xy_ID_OOD(dialogue_path, key="train")
-                # Xy_ID_te, Xy_OOD_te = get_unsplit_Xy_ID_OOD(dialogue_path, key="test")
                 print(file_path)
                 datasetGenerator = DatasetOriginal(file_path)
 
@@ -189,9 +196,15 @@ def generate_dataset(categories, test_label, datasetType: DatasetType = DatasetT
                     dataset["global_ood"] = global_ood[decision_node]
                     dataset["garbage"] = garbage
 
-                    yield dataset
+                    if return_type is DatasetReturnType.YIELD_SEPARATELY:
+                        yield dataset
+                    elif return_type is DatasetReturnType.RETURN_ALL:
+                        dataset_grouped.append(dataset)
 
-    elif datasetType is DatasetType.FLATTEN:
+        if return_type is DatasetReturnType.RETURN_ALL:
+            return [dataset_grouped]
+
+    elif dataset_type is DatasetType.FLATTEN:
         # Prepare files
         annotated_files_path = os.path.join(ROOT_DIR, 'data', "flatten_dialogues", "annotated", "ok")
         global_path = os.path.join(ROOT_DIR, 'data', "flatten_dialogues", "annotated", "ok", "global.json")
@@ -231,4 +244,10 @@ def generate_dataset(categories, test_label, datasetType: DatasetType = DatasetT
                 dataset["global_ood"] = global_ood[decision_node]
                 dataset["garbage"] = garbage
 
-                yield dataset
+                if return_type is DatasetReturnType.YIELD_SEPARATELY:
+                    yield dataset
+                elif return_type is DatasetReturnType.RETURN_ALL:
+                    dataset_grouped.append(dataset)
+
+            if return_type is DatasetReturnType.RETURN_ALL:
+                return [dataset_grouped]
