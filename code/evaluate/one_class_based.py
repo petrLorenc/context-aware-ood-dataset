@@ -22,8 +22,8 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents):
     X_global_val, y_global_val = global_split.get_X_y(dataset["global_val"])
 
     # Train
-    local_model, local_ocsvm = classification_model.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
-    global_model, global_ocsvm = classification_model.fit(X_train=X_global, y_train=y_global, X_val=X_global_val, y_val=y_global_val)
+    local_model, local_one_class_models, local_density_threshold = classification_model.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
+    global_model, global_one_class_models, global_density_threshold = classification_model.fit(X_train=X_global, y_train=y_global, X_val=X_global_val, y_val=y_global_val)
 
     end_time_train = time.time()
 
@@ -38,7 +38,7 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents):
 
     predictions = []
     for idx in range(len(X_test)):
-        if classification_model.belong_to(local_ocsvm, X_test[idx].numpy().reshape(1, -1)):
+        if classification_model.belong_to(local_one_class_models, local_density_threshold, X_test[idx].numpy().reshape(1, -1)):
             pred_probs = classification_model.predict_proba_with(local_model, X_test[idx].numpy().reshape(1, -1))
             predictions.append(int(np.argmax(-pred_probs)))
         else:
@@ -52,7 +52,7 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents):
 
     predictions = []
     for idx in range(len(X_test)):
-        if classification_model.belong_to(global_ocsvm, X_test[idx].numpy().reshape(1, -1)):
+        if classification_model.belong_to(global_one_class_models, global_density_threshold, X_test[idx].numpy().reshape(1, -1)):
             pred_probs = classification_model.predict_proba_with(global_model, X_test[idx].numpy().reshape(1, -1))
             predictions.append(int(np.argmax(-pred_probs)))
         else:
@@ -67,7 +67,7 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents):
 
     predictions = []
     for idx in range(len(X_test)):
-        if classification_model.belong_to(local_ocsvm, X_test[idx].numpy().reshape(1, -1)) or classification_model.belong_to(global_ocsvm, X_test[idx].numpy().reshape(1, -1)):
+        if classification_model.belong_to(local_one_class_models, local_density_threshold, X_test[idx].numpy().reshape(1, -1)) or classification_model.belong_to(global_one_class_models, global_density_threshold, X_test[idx].numpy().reshape(1, -1)):
             predictions.append(999)
         else:
             predictions.append(local_split.intents_dct['ood'])

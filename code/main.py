@@ -4,7 +4,8 @@ from utils.utils import print_results, aggregate_results
 from utils.dataset.generate import DatasetType
 from utils.dataset.generate import generate_dataset
 
-# from config.one_class_svm import imports
+# from config.one_class_model import imports
+# from config.embedding_based import imports
 from config.local_illusionist import imports
 
 categories = [
@@ -41,14 +42,12 @@ if __name__ == '__main__':
                     config.model_name = model_name
                     config.emb_name = emb_name
                     config.test_type = test_label
-                    config.dataset_type = str(dataset_args["datasetType"])
+                    config.dataset_type = str(dataset_args["dataset_type"])
 
                     dct_results_lst = []
 
-                    for dataset in generate_dataset(categories=dataset_args["categories"],
-                                                    test_label=test_label,
-                                                    dataset_type=dataset_args["datasetType"],
-                                                    return_type=dataset_args["return_type"]):
+                    for dataset in generate_dataset(test_label=test_label,
+                                                    **dataset_args):
                         args = i["evaluation_fn_arg"]
                         args["dataset"] = dataset
                         args["embedding_model"] = embedding_model

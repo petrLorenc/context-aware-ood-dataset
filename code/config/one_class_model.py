@@ -11,14 +11,16 @@ categories = [
 from utils.dataset.generate import DatasetType, DatasetReturnType
 from evaluate.one_class_based import evaluate
 
-from models.one_class_svm import OneClassSVMModel
+from models.one_class_svm import OneClassSklearnModel
+from sklearn.mixture import GaussianMixture
 import tensorflow_hub as hub
 from custom_embeddings.fasttext import FastTextSW
 from sklearn.svm import OneClassSVM
 
 imports.append({
     "evaluation_fn": evaluate,
-    "algorithms": [OneClassSVMModel(OneClassSVM(gamma='auto'))],
+    # "algorithms": [OneClassSVMModel(OneClassSVM(gamma='auto'))],
+    "algorithms": [OneClassSklearnModel(GaussianMixture(n_components=10, covariance_type='full', n_init=3))],
     "evaluation_fn_arg": {"limit_num_sents": LIMIT_NUM_SENTS},
     "embeddings": [
         {"embedding_name": "fasttext", "embedding_model": FastTextSW(model_data_path="../data/embeddings/wiki_en_50k.pickle", sw_data_path="../data/embeddings/wiki_en_sw_100k.pickle")}

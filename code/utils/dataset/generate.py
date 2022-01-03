@@ -138,7 +138,7 @@ class DatasetFlatten(DatasetGenerator):
                 if intent == "ood":
                     continue
                 for sent in self.global_dialogue[intent][key]:
-                    intents_decision_node[node].append([sent, str(intent)])
+                    intents_decision_node[node].append([sent, int(intent)])
         else:
             raise Exception(f"Unknown level {level}")
 
@@ -151,18 +151,25 @@ class DatasetFlatten(DatasetGenerator):
                 garbages.append([sent.strip(), "garbage"])
         return garbages
 
+    def get_context(self):
+        return self.dialogue["bot_response"]
 
-def generate_dataset(categories,
+
+def generate_dataset(name,
+                     categories,
                      test_label,
                      dataset_type: DatasetType = DatasetType.ORIGINAL,
-                     return_type: DatasetReturnType = DatasetReturnType.YIELD_SEPARATELY):
+                     return_type: DatasetReturnType = DatasetReturnType.YIELD_SEPARATELY,
+                     annotated_files_path=None,
+                     global_path=None
+                     ):
     dataset_grouped = []
     if dataset_type is DatasetType.ORIGINAL:
 
         # Prepare files
         for cat in categories:
-            annotated_files_path = os.path.join(ROOT_DIR, 'data', "dialogues", cat)
-            files_path = [os.path.join(annotated_files_path, ds) for ds in os.listdir(annotated_files_path)]
+            annotated_files_path_cat = os.path.join(annotated_files_path, cat)
+            files_path = [os.path.join(annotated_files_path_cat, ds) for ds in os.listdir(annotated_files_path_cat)]
 
             for file_path in files_path:
                 print(file_path)
@@ -202,12 +209,10 @@ def generate_dataset(categories,
                         dataset_grouped.append(dataset)
 
         if return_type is DatasetReturnType.RETURN_ALL:
-            return [dataset_grouped]
+            yield dataset_grouped
 
     elif dataset_type is DatasetType.FLATTEN:
         # Prepare files
-        annotated_files_path = os.path.join(ROOT_DIR, 'data', "flatten_dialogues", "annotated", "ok")
-        global_path = os.path.join(ROOT_DIR, 'data', "flatten_dialogues", "annotated", "ok", "global.json")
         files_path = [os.path.join(annotated_files_path, ds) for ds in os.listdir(annotated_files_path)]
 
         for file_path in files_path:
@@ -216,6 +221,7 @@ def generate_dataset(categories,
                 continue
             datasetGenerator = DatasetFlatten(file_path, global_path)
 
+            context = datasetGenerator.get_context()
             local_data_train = datasetGenerator.get_intent(key="train", level="local")
             local_data_val = datasetGenerator.get_intent(key="val", level="local")
             local_data_test = datasetGenerator.get_intent(key=test_label, level="local")
@@ -232,6 +238,8 @@ def generate_dataset(categories,
 
             for decision_node in local_data_train.keys():
                 print(decision_node)
+                dataset["context"] = context
+
                 dataset['train'] = local_data_train[decision_node]
                 dataset['val'] = local_data_val[decision_node]
                 dataset['test'] = local_data_test[decision_node]
@@ -249,5 +257,5 @@ def generate_dataset(categories,
                 elif return_type is DatasetReturnType.RETURN_ALL:
                     dataset_grouped.append(dataset)
 
-            if return_type is DatasetReturnType.RETURN_ALL:
-                return [dataset_grouped]
+        if return_type is DatasetReturnType.RETURN_ALL:
+            yield dataset_grouped

@@ -6,20 +6,20 @@ from abc import abstractmethod
 
 
 class AbstractOneClassModel(AbstractModel):
-    def __init__(self, one_class_model):
+    def __init__(self, one_class_sklearn_model):
         super().__init__()
-        self.one_class_svm = one_class_model
+        self.one_class_sklearn_model = one_class_sklearn_model
 
     @abstractmethod
     def fit(self, X_train, y_train, X_val, y_val):
         raise NotImplementedError('You have to create a model.')
 
     @abstractmethod
-    def belong_to(self, one_class_svm, X_test) -> bool:
+    def belong_to(self, one_class_svm, density_threshold, X_test) -> bool:
         raise NotImplementedError('You have to create a model.')
 
 
-class OneClassSVMModel(AbstractOneClassModel):
+class OneClassSklearnModel(AbstractOneClassModel):
 
     def create_model(self, emb_dim, num_classes):
         model = LogisticRegression(max_iter=850,
@@ -49,12 +49,14 @@ class OneClassSVMModel(AbstractOneClassModel):
         clf.fit(X_train.numpy(), y_train.numpy())
         self.model = clf.best_estimator_
 
-        self.one_class_svm.fit(X_train)
+        self.one_class_sklearn_model.fit(X_train)
+        densities = self.one_class_sklearn_model.score(X_train)
+        density_threshold = np.max(densities) * 11/10
 
-        return self.model, self.one_class_svm
+        return self.model, self.one_class_sklearn_model, density_threshold
 
-    def belong_to(self, one_class_svm, X_test) -> bool:
-        return one_class_svm.predict(X_test)[0] == 1
+    def belong_to(self, one_class_svm, density_threshold, X_test) -> bool:
+        return one_class_svm.score(X_test) > density_threshold
 
     def predict(self, X_test):
         return self.predict_with(self.model, X_test)
