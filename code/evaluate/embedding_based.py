@@ -15,48 +15,74 @@ def evaluate(dataset, embedding_model, classification_model, limit_num_sents):
     global_split = TransformToEmbeddings(embedding_model)
 
     # Split dataset
-    X_train_with_context, y_train_with_context = [], []
-    X_val_with_context, y_val_with_context = [], []
+    X_train_context, X_train_utterance, y_train_with_context, begin_end_mask_train = [], [], [], []
+    X_val_context, X_val_utterance,  y_val_with_context, begin_end_mask_val = [], [], [], []
 
-    X_test_with_context, y_test_with_context, begin_end_masks = [], [], []
-    global_X_test_with_context, global_y_test_with_context = [], []
-
+    local_X_test_context, local_X_test_utterance, local_y_test, begin_end_masks_test_local, begin_end_masks_test_global = [], [], [], [], []
+    global_X_test_context, global_X_test_utterances, global_y_test = [], [], []
 
     for d in dataset:
-        max_idx = max(y_train_with_context) if len(y_train_with_context) else 0
+        max_idx = max(y_train_with_context) + 1 if len(y_train_with_context) else 0
         mask_idx_begin = max_idx
+        num_examples_begin = len(X_train_utterance)
         for s, y in d['train']:
             for c in d["context"]:
-                X_train_with_context.append(f"{c}<SEP>{s}")
+                X_train_context.append(f"{c}")
+                X_train_utterance.append(f"{s}")
                 y_train_with_context.append(y + max_idx)
-        mask_idx_end = max(y_train_with_context)
+        mask_idx_end = max(y_train_with_context) + 1
+        num_examples_end = len(X_train_utterance)
+        begin_end_mask_train.append((num_examples_begin, num_examples_end, mask_idx_begin, mask_idx_end))
+
+        num_examples_begin = len(X_val_utterance)
         for s, y in d['val']:
             for c in d["context"]:
-                X_val_with_context.append(f"{c}<SEP>{s}")
+                X_val_context.append(f"{c}")
+                X_val_utterance.append(f"{s}")
                 y_val_with_context.append(y + max_idx)
+        num_examples_end = len(X_val_utterance)
+        begin_end_mask_val.append((num_examples_begin, num_examples_end, mask_idx_begin, mask_idx_end))
+
+        num_examples_begin = len(local_X_test_utterance)
         for s, y in d['test']:
             for c in d["context"]:
-                X_test_with_context.append(f"{c}<SEP>{s}")
-                y_test_with_context.append(y + max_idx)
-        begin_end_masks.append((mask_idx_begin, mask_idx_end))
+                local_X_test_context.append(f"{c}")
+                local_X_test_utterance.append(f"{s}")
+                local_y_test.append(y + max_idx)
+        num_examples_end = len(local_X_test_utterance)
+        begin_end_masks_test_local.append((num_examples_begin, num_examples_end, mask_idx_begin, mask_idx_end))
 
-
-    max_idx = max(y_train_with_context) if len(y_train_with_context) else 0
+    max_idx = max(y_train_with_context) + 1 if len(y_train_with_context) else 0
     global_mask_idx_begin = max_idx
-    for d in dataset:
+    for idx, d in enumerate(dataset):
+        _, _, b, e = begin_end_mask_train[idx]
+        begin_mask = len(X_train_utterance)
         for s, y in d['global_train']:
             for c in d["context"]:
-                X_train_with_context.append(f"{c}<SEP>{s}")
+                X_train_context.append(f"{c}")
+                X_train_utterance.append(f"{s}")
                 y_train_with_context.append(y + max_idx)
+        begin_end_mask_train.append((begin_mask, len(X_train_utterance), b, e))
+
+        _, _, b, e = begin_end_mask_val[idx]
+        begin_mask = len(X_val_utterance)
         for s, y in d['global_val']:
             for c in d["context"]:
-                X_val_with_context.append(f"{c}<SEP>{s}")
+                X_val_context.append(f"{c}")
+                X_val_utterance.append(f"{s}")
                 y_val_with_context.append(y + max_idx)
+        begin_end_mask_val.append((begin_mask, len(X_val_utterance), b, e))
+
+        _, _, b, e = begin_end_masks_test_local[idx]
+        begin_mask = len(global_X_test_utterances)
         for s, y in d['global_test']:
             for c in d["context"]:
-                global_X_test_with_context.append(f"{c}<SEP>{s}")
-                global_y_test_with_context.append(y + max_idx)
-    global_mask_idx_end = max(y_train_with_context)
+                global_X_test_context.append(f"{c}")
+                global_X_test_utterances.append(f"{s}")
+                global_y_test.append(y + max_idx)
+        begin_end_masks_test_global.append((begin_mask, len(global_X_test_utterances), b, e))
+
+    global_mask_idx_end = max(y_train_with_context) + 1
 
     start_time_train = time.time()
     # Train
@@ -65,12 +91,27 @@ def evaluate(dataset, embedding_model, classification_model, limit_num_sents):
     y_train_with_context = to_categorical(y_train_with_context, num_classes=num_classes)
     y_val_with_context = to_categorical(y_val_with_context, num_classes=num_classes)
 
-    mask_test_with_context = np.zeros_like(y_train_with_context)
-    for idx, (b, e) in enumerate(begin_end_masks):
-        mask_test_with_context[idx, b:e] = 1
-        mask_test_with_context[idx, global_mask_idx_begin:global_mask_idx_end] = 1
+    mask_train = np.zeros_like(y_train_with_context)
+    for b_idx, e_idx, b, e in begin_end_mask_train:
+        mask_train[b_idx:e_idx, b:e] = 1
+    mask_train[:, global_mask_idx_begin:global_mask_idx_end] = 1
 
-    history = classification_model.fit(X_train=X_train_with_context, y_train=y_train_with_context, X_val=X_val_with_context, y_val=y_val_with_context)
+    mask_val = np.zeros_like(y_val_with_context)
+    for b_idx, e_idx, b, e in begin_end_mask_val:
+        mask_val[b_idx:e_idx, b:e] = 1
+    mask_val[:, global_mask_idx_begin:global_mask_idx_end] = 1
+
+    mask_test_local = np.zeros(shape=(len(local_y_test), num_classes))
+    for b_idx, e_idx, b, e in begin_end_masks_test_local:
+        mask_test_local[b_idx:e_idx, b:e] = 1
+    mask_test_local[:, global_mask_idx_begin:global_mask_idx_end] = 1
+
+    mask_test_global = np.zeros(shape=(len(global_y_test), num_classes))
+    for b_idx, e_idx, b, e in begin_end_masks_test_global:
+        mask_test_global[b_idx:e_idx, b:e] = 1
+    mask_test_global[:, global_mask_idx_begin:global_mask_idx_end] = 1
+
+    history = classification_model.fit(X_train=(X_train_context, X_train_utterance, mask_train), y_train=y_train_with_context, X_val=(X_val_context, X_val_utterance, mask_val), y_val=y_val_with_context)
 
     end_time_train = time.time()
 
@@ -80,21 +121,17 @@ def evaluate(dataset, embedding_model, classification_model, limit_num_sents):
     results_dct = {"results": {}}
     start_time_inference = time.time()
 
-    predictions = []
-    for idx, s in enumerate(X_test_with_context):
-        pred = classification_model.predict_proba([s], mask_test_with_context[idx])
-        predictions.append(np.argmax(pred))
+    predictions = classification_model.predict_proba((local_X_test_context, local_X_test_utterance, mask_test_local))
+    predictions = np.argmax(predictions, axis=1)
 
-    results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test_with_context, oos_label=global_split.intents_dct['ood'],
+    results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=local_y_test, oos_label=global_split.intents_dct['ood'],
                                                                        focus="IND")
 
     # # # Split dataset
-    predictions = []
-    for idx, s in enumerate(global_X_test_with_context):
-        pred = classification_model.predict_proba([s], mask_test_with_context[idx])
-        predictions.append(np.argmax(pred))
+    predictions = classification_model.predict_proba((global_X_test_context, global_X_test_utterances, mask_test_global))
+    predictions = np.argmax(predictions, axis=1)
 
-    results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=global_y_test_with_context, oos_label=global_split.intents_dct['ood'],
+    results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=global_y_test, oos_label=global_split.intents_dct['ood'],
                                                                         focus="IND")
 
     #

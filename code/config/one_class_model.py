@@ -16,6 +16,7 @@ from sklearn.mixture import GaussianMixture
 import tensorflow_hub as hub
 from custom_embeddings.fasttext import FastTextSW
 from sklearn.svm import OneClassSVM
+from constants import TENSORFLOW_ROOT, ROOT_DIR
 
 imports.append({
     "evaluation_fn": evaluate,

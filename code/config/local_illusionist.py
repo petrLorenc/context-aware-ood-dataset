@@ -10,7 +10,7 @@ categories = [
 ]
 import os
 
-from constants import ROOT_DIR
+from constants import ROOT_DIR, TENSORFLOW_ROOT
 from utils.dataset.generate import DatasetType, DatasetReturnType
 from custom_embeddings.fasttext import FastTextSW
 from custom_embeddings.huggingface import HuggingFaceModel
@@ -27,10 +27,10 @@ imports.append({
     "evaluation_fn_arg": {"limit_num_sents": LIMIT_NUM_SENTS, "find_best_threshold_fn": lambda x: 0.55},
     "embeddings": [
         # {"embedding_name": "fasttext", "embedding_model": FastTextSW(model_data_path="../data/embeddings/wiki_en_50k.pickle", sw_data_path="../data/embeddings/wiki_en_sw_100k.pickle")}
-        # {"embedding_name": "use4", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder_4")}
-        # {"embedding_name": "use5", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder_5")}
-        # {"embedding_name": "use4_finetuned", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder-finened-4")}
-        {"embedding_name": "use5-finetuned", "embedding_model": hub.load("/media/petrlorenc/Data/universal-sentence-encoder-finetuned-5")}
+        # {"embedding_name": "use4", "embedding_model": hub.load(os.path.join(TENSORFLOW_ROOT,universal-sentence-encoder_4"))}
+        # {"embedding_name": "use5", "embedding_model": hub.load(os.path.join(TENSORFLOW_ROOT,universal-sentence-encoder_5"))}
+        # {"embedding_name": "use4_finetuned", "embedding_model": hub.load(os.path.join(TENSORFLOW_ROOT,universal-sentence-encoder-finetuned-4"))}
+        {"embedding_name": "use5-finetuned", "embedding_model": hub.load(os.path.join(TENSORFLOW_ROOT,"universal-sentence-encoder-finetuned-5"))}
         # {"embedding_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", "embedding_model": HuggingFaceModel(tokenizer_path="/media/petrlorenc/Data/hugging_face_models/paraphrase-multilingual-MiniLM-L12-v2", model_path="/media/petrlorenc/Data/hugging_face_models/paraphrase-multilingual-MiniLM-L12-v2")}
     ],
     "test_keys": [""],

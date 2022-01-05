@@ -5,8 +5,8 @@ from utils.dataset.generate import DatasetType
 from utils.dataset.generate import generate_dataset
 
 # from config.one_class_model import imports
-# from config.embedding_based import imports
-from config.local_illusionist import imports
+from config.embedding_based import imports
+# from config.local_illusionist import imports
 
 categories = [
     'animals',
