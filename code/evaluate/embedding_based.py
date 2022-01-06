@@ -18,8 +18,8 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
     X_train_context, X_train_utterance, y_train_with_context, begin_end_mask_train = [], [], [], []
     X_val_context, X_val_utterance, y_val_with_context, begin_end_mask_val = [], [], [], []
 
-    local_X_test_context, local_X_test_utterance, local_y_test, begin_end_masks_test_local, begin_end_masks_test_global = [], [], [], [], []
-    global_X_test_context, global_X_test_utterances, global_y_test = [], [], []
+    X_test_local_context, X_test_local_utterance, y_test_local, begin_end_masks_test_local,  = [], [], [], []
+    X_test_global_context, X_test_global_utterances, y_test_global, begin_end_masks_test_global = [], [], [], []
 
     local_X_ood_context, local_X_ood_utterance, begin_end_masks_ood_local = [], [], []
 
@@ -27,32 +27,17 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
         max_idx = max(y_train_with_context) + 1 if len(y_train_with_context) else 0
         mask_idx_begin = max_idx
         num_examples_begin = len(X_train_utterance)
-        for s, y in d['train']:
-            for c in d["context"]:
-                X_train_context.append(f"{c}")
-                X_train_utterance.append(f"{s}")
-                y_train_with_context.append(y + max_idx)
+        process_dialogue_by_key(d=d, key="train", context_arr=X_train_context, utterance_arr=X_train_utterance, label_arr=y_train_with_context, last_max_idx=max_idx)
         mask_idx_end = max(y_train_with_context) + 1
-        num_examples_end = len(X_train_utterance)
-        begin_end_mask_train.append((num_examples_begin, num_examples_end, mask_idx_begin, mask_idx_end))
+        begin_end_mask_train.append((num_examples_begin, len(X_train_utterance), mask_idx_begin, mask_idx_end))
 
         num_examples_begin = len(X_val_utterance)
-        for s, y in d['val']:
-            for c in d["context"]:
-                X_val_context.append(f"{c}")
-                X_val_utterance.append(f"{s}")
-                y_val_with_context.append(y + max_idx)
-        num_examples_end = len(X_val_utterance)
-        begin_end_mask_val.append((num_examples_begin, num_examples_end, mask_idx_begin, mask_idx_end))
+        process_dialogue_by_key(d=d, key="val", context_arr=X_val_context, utterance_arr=X_val_utterance, label_arr=y_val_with_context, last_max_idx=max_idx)
+        begin_end_mask_val.append((num_examples_begin, len(X_val_utterance), mask_idx_begin, mask_idx_end))
 
-        num_examples_begin = len(local_X_test_utterance)
-        for s, y in d['test']:
-            for c in d["context"]:
-                local_X_test_context.append(f"{c}")
-                local_X_test_utterance.append(f"{s}")
-                local_y_test.append(y + max_idx)
-        num_examples_end = len(local_X_test_utterance)
-        begin_end_masks_test_local.append((num_examples_begin, num_examples_end, mask_idx_begin, mask_idx_end))
+        num_examples_begin = len(X_test_local_utterance)
+        process_dialogue_by_key(d=d, key="test", context_arr=X_test_local_context, utterance_arr=X_test_local_utterance, label_arr=y_test_local, last_max_idx=max_idx)
+        begin_end_masks_test_local.append((num_examples_begin, len(X_test_local_utterance), mask_idx_begin, mask_idx_end))
 
         num_examples_begin = len(local_X_ood_context)
         for s, y in d['local_ood']:
@@ -75,30 +60,18 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
     for idx, d in enumerate(dataset):
         _, _, b, e = begin_end_mask_train[idx]
         begin_mask = len(X_train_utterance)
-        for s, y in d['global_train']:
-            for c in d["context"]:
-                X_train_context.append(f"{c}")
-                X_train_utterance.append(f"{s}")
-                y_train_with_context.append(y + max_idx)
+        process_dialogue_by_key(d=d, key="global_train", context_arr=X_train_context, utterance_arr=X_train_utterance, label_arr=y_train_with_context, last_max_idx=max_idx)
         begin_end_mask_train.append((begin_mask, len(X_train_utterance), b, e))
 
         _, _, b, e = begin_end_mask_val[idx]
         begin_mask = len(X_val_utterance)
-        for s, y in d['global_val']:
-            for c in d["context"]:
-                X_val_context.append(f"{c}")
-                X_val_utterance.append(f"{s}")
-                y_val_with_context.append(y + max_idx)
+        process_dialogue_by_key(d=d, key="global_val", context_arr=X_val_context, utterance_arr=X_val_utterance, label_arr=y_val_with_context, last_max_idx=max_idx)
         begin_end_mask_val.append((begin_mask, len(X_val_utterance), b, e))
 
         _, _, b, e = begin_end_masks_test_local[idx]
-        begin_mask = len(global_X_test_utterances)
-        for s, y in d['global_test']:
-            for c in d["context"]:
-                global_X_test_context.append(f"{c}")
-                global_X_test_utterances.append(f"{s}")
-                global_y_test.append(y + max_idx)
-        begin_end_masks_test_global.append((begin_mask, len(global_X_test_utterances), b, e))
+        begin_mask = len(X_test_global_utterances)
+        process_dialogue_by_key(d=d, key="global_test", context_arr=X_test_global_context, utterance_arr=X_test_global_utterances, label_arr=y_test_global, last_max_idx=max_idx)
+        begin_end_masks_test_global.append((begin_mask, len(X_test_global_utterances), b, e))
 
     global_mask_idx_end = max(y_train_with_context) + 1
 
@@ -109,33 +82,23 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
     y_train_with_context = to_categorical(y_train_with_context, num_classes=num_classes)
     y_val_with_context = to_categorical(y_val_with_context, num_classes=num_classes)
 
-    mask_train = np.zeros_like(y_train_with_context)
-    for b_idx, e_idx, b, e in begin_end_mask_train:
-        mask_train[b_idx:e_idx, b:e] = 1
-    mask_train[:, global_mask_idx_begin:global_mask_idx_end] = 1
+    mask_train = get_mask(begin_end_mask_train, global_mask_idx_begin, global_mask_idx_end,
+                          generated_mask=np.zeros_like(y_train_with_context))
 
-    mask_val = np.zeros_like(y_val_with_context)
-    for b_idx, e_idx, b, e in begin_end_mask_val:
-        mask_val[b_idx:e_idx, b:e] = 1
-    mask_val[:, global_mask_idx_begin:global_mask_idx_end] = 1
+    mask_val = get_mask(begin_end_mask_val, global_mask_idx_begin, global_mask_idx_end,
+                        generated_mask=np.zeros_like(y_val_with_context))
 
-    mask_test_local = np.zeros(shape=(len(local_y_test), num_classes))
-    for b_idx, e_idx, b, e in begin_end_masks_test_local:
-        mask_test_local[b_idx:e_idx, b:e] = 1
-    mask_test_local[:, global_mask_idx_begin:global_mask_idx_end] = 1
+    mask_test_local = get_mask(begin_end_masks_test_local, global_mask_idx_begin, global_mask_idx_end,
+                               generated_mask=np.zeros(shape=(len(y_test_local), num_classes)))
 
-    mask_test_global = np.zeros(shape=(len(global_y_test), num_classes))
-    for b_idx, e_idx, b, e in begin_end_masks_test_global:
-        mask_test_global[b_idx:e_idx, b:e] = 1
-    mask_test_global[:, global_mask_idx_begin:global_mask_idx_end] = 1
+    mask_test_global = get_mask(begin_end_masks_test_global, global_mask_idx_begin, global_mask_idx_end,
+                                generated_mask=np.zeros(shape=(len(y_test_global), num_classes)))
 
-    mask_ood = np.zeros(shape=(len(local_X_ood_context), num_classes))
-    for b_idx, e_idx, b, e in begin_end_masks_ood_local:
-        mask_ood[b_idx:e_idx, b:e] = 1
-    mask_ood[:, global_mask_idx_begin:global_mask_idx_end] = 1
+    mask_ood = get_mask(begin_end_masks_ood_local, global_mask_idx_begin, global_mask_idx_end,
+                        generated_mask=np.zeros(shape=(len(local_X_ood_context), num_classes)))
 
-    history = classification_model.fit(X_train=(X_train_context, X_train_utterance, mask_train), y_train=y_train_with_context,
-                                       X_val=(X_val_context, X_val_utterance, mask_val), y_val=y_val_with_context)
+    _ = classification_model.fit(X_train=(X_train_context, X_train_utterance, mask_train), y_train=y_train_with_context,
+                                 X_val=(X_val_context, X_val_utterance, mask_val), y_val=y_val_with_context)
 
     end_time_train = time.time()
 
@@ -145,20 +108,20 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
     results_dct = {"results": {}}
     start_time_inference = time.time()
 
-    _predictions = classification_model.predict_proba((local_X_test_context, local_X_test_utterance, mask_test_local))
+    _predictions = classification_model.predict_proba((X_test_local_context, X_test_local_utterance, mask_test_local))
     predictions = list(map(lambda x: np.argmax(x) if np.max(x) > get_threshold(None) else global_split.intents_dct['ood'], _predictions))
     threshold_local = np.max(_predictions, axis=1)
 
-    results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=local_y_test,
+    results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test_local,
                                                                        oos_label=global_split.intents_dct['ood'],
                                                                        focus="IND")
 
     # # # Split dataset
-    _predictions = classification_model.predict_proba((global_X_test_context, global_X_test_utterances, mask_test_global))
+    _predictions = classification_model.predict_proba((X_test_global_context, X_test_global_utterances, mask_test_global))
     predictions = list(map(lambda x: np.argmax(x) if np.max(x) > get_threshold(None) else global_split.intents_dct['ood'], _predictions))
     threshold_global = np.max(_predictions, axis=1)
 
-    results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=global_y_test,
+    results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test_global,
                                                                         oos_label=global_split.intents_dct['ood'],
                                                                         focus="IND")
 
@@ -177,3 +140,18 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
     results_dct['memory'] = round(memory, 1)
 
     return results_dct
+
+
+def process_dialogue_by_key(d, key, context_arr, utterance_arr, label_arr, last_max_idx):
+    for s, y in d[key]:
+        for c in d["context"]:
+            context_arr.append(f"{c}")
+            utterance_arr.append(f"{s}")
+            label_arr.append(y + last_max_idx)
+
+
+def get_mask(begin_end_masks_information, global_mask_idx_begin, global_mask_idx_end, generated_mask):
+    for b_idx, e_idx, b, e in begin_end_masks_information:
+        generated_mask[b_idx:e_idx, b:e] = 1
+    generated_mask[:, global_mask_idx_begin:global_mask_idx_end] = 1
+    return generated_mask
