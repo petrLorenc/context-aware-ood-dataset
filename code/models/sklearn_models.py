@@ -4,10 +4,14 @@ from abc import abstractmethod, ABCMeta
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
 
-from models.abstract_neural_net import AbstractModel
+from models import AbstractModel
 
 
 class AbstractSklearnModel(AbstractModel, metaclass=ABCMeta):
+    def to_dict(self):
+        return {
+
+        }
 
     def fit(self, X_train, y_train, X_val, y_val):
         emb_dim = X_train.shape[1]  # embedding dimension

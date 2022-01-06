@@ -4,7 +4,6 @@ import tensorflow as tf
 from constants import ROOT_DIR
 
 EXTRA_LAYER_ACT_F = tf.keras.activations.relu  # specifies the activation function of the extra layer in NNs
-NEEDS_VAL = ['BaselineNN', 'BaselineNNExtraLayer']
 
 
 class TransformToEmbeddings:

@@ -41,7 +41,8 @@ if gpus:
 gpus = tf.config.list_logical_devices('GPU')
 print(gpus)
 
-strategy = tf.distribute.MirroredStrategy(gpus)
+strategy = tf.distribute.OneDeviceStrategy(device="CPU")
+# strategy = tf.distribute.MirroredStrategy(gpus)
 if __name__ == '__main__':
     with strategy.scope():
         for i in imports:

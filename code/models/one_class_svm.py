@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.model_selection import GridSearchCV
-from models.abstract_neural_net import AbstractModel
+from models import AbstractModel
 from sklearn.linear_model import LogisticRegression
 from abc import abstractmethod
 
@@ -20,6 +20,11 @@ class AbstractOneClassModel(AbstractModel):
 
 
 class OneClassSklearnModel(AbstractOneClassModel):
+
+    def to_dict(self):
+        return {
+
+        }
 
     def create_model(self, emb_dim, num_classes):
         model = LogisticRegression(max_iter=850,

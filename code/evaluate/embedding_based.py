@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
-from models.abstract_neural_net import AbstractModel
+from models import AbstractModel
 from utils.testing import Testing
 from utils.utils import TransformToEmbeddings
 

@@ -1,9 +1,19 @@
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from models import AbstractModel
 
 
-class CosineSimilarity:
+class CosineSimilarity(AbstractModel):
+    def create_model(self, emb_dim, num_classes):
+        pass
+
+    def to_dict(self):
+        return {
+
+        }
+
     def __init__(self):
+        super().__init__()
         self.X_train = None
         self.y_train = None
 
