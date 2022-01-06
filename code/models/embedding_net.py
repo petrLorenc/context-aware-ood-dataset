@@ -40,7 +40,7 @@ class BERTEmbeddingModel(AbstractEmbeddingModel):
                  tfhub_handle_preprocess,
                  seq_length,
                  use_masking_when_training,
-                 epoch,
+                 epochs,
                  batch_size,
                  init_learning_rate):
         super().__init__()
@@ -50,9 +50,20 @@ class BERTEmbeddingModel(AbstractEmbeddingModel):
         self.preprocessor = None
         self.use_masking_when_training = use_masking_when_training
 
-        self.epochs = epoch
+        self.epochs = epochs
         self.batch_size = batch_size
         self.init_learning_rate = init_learning_rate
+
+    def to_dict(self):
+        return {
+            "encoder":self.tfhub_handle_encoder,
+            "preprocessor":self.preprocessor,
+            "seq_length": self.seq_length,
+            "use_masking_when_training": self.use_masking_when_training,
+            "epoch": self.epochs,
+            "batch_size": self.batch_size,
+            "init_learning_rate": self.init_learning_rate
+        }
 
     def create_model(self, num_classes):
         print(f'BERT model selected           : {self.tfhub_handle_encoder}')
@@ -61,25 +72,35 @@ class BERTEmbeddingModel(AbstractEmbeddingModel):
         self.preprocessor = hub.load(self.tfhub_handle_preprocess)
         encoder = hub.KerasLayer(self.tfhub_handle_encoder, trainable=True, name='BERT_encoder')
 
-        encoder_inputs = dict(
-            input_word_ids=tf.keras.layers.Input(shape=(self.seq_length,), dtype=tf.int32, name="input_word_ids"),
-            input_mask=tf.keras.layers.Input(shape=(self.seq_length,), dtype=tf.int32, name="input_mask"),
-            input_type_ids=tf.keras.layers.Input(shape=(self.seq_length,), dtype=tf.int32, name="input_type_ids"),
-        )
+        context_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name="context")
+        utterance_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name="utterance")
         mask_input = tf.keras.layers.Input(shape=(num_classes,), dtype=tf.float32, name="mask_input")
+
+        text_inputs = [context_input, utterance_input]
+
+        tokenize = hub.KerasLayer(self.preprocessor.tokenize)
+        tokenized_inputs = [tokenize(segment) for segment in text_inputs]
+
+        seq_length = 128  # Your choice here.
+        bert_pack_inputs = hub.KerasLayer(
+            self.preprocessor.bert_pack_inputs,
+            arguments=dict(seq_length=seq_length))  # Optional argument.
+        encoder_inputs = bert_pack_inputs(tokenized_inputs)
 
         outputs = encoder(encoder_inputs)
         net = outputs['pooled_output']
         net = tf.keras.layers.Dropout(0.1)(net)
-        net = tf.keras.layers.Dense(num_classes, activation="sigmoid", name='classifier')(net)
+        net = tf.keras.layers.Dense(num_classes, activation="softmax", name='classifier')(net)
 
-        action_probs_masked = tf.keras.layers.Multiply()([net, mask_input])
+        # model_output = tf.keras.layers.Multiply()([net, mask_input])
 
         # not a proper Softmax (TODO: try another normalization techniques)
-        layer = tf.keras.layers.Lambda(lambda x: x / tf.keras.backend.sum(x, axis=1)[:, None])
-        actions = layer(action_probs_masked)
 
-        self.model = tf.keras.Model([encoder_inputs, mask_input], actions)
+        action_probs_masked = tf.keras.layers.Multiply()([net, mask_input])
+        layer = tf.keras.layers.Lambda(lambda x: x / tf.keras.backend.sum(x, axis=1)[:, None])
+        model_output = layer(action_probs_masked)
+
+        self.model = tf.keras.Model(inputs={"context_input": context_input, "utterance_input": utterance_input, "mask_input": mask_input}, outputs=model_output)
         self.model.summary()
 
     def fit(self, X_train, y_train, X_val, y_val):
@@ -100,8 +121,10 @@ class BERTEmbeddingModel(AbstractEmbeddingModel):
                            metrics=metrics)
 
         print("Starting preprocessing data")
-        _X_train = self.preprocessor.bert_pack_inputs([self.preprocessor.tokenize(X_train[0]), self.preprocessor.tokenize(X_train[1])], seq_length=self.seq_length)
-        _X_val = self.preprocessor.bert_pack_inputs([self.preprocessor.tokenize(X_val[0]), self.preprocessor.tokenize(X_val[1])], seq_length=self.seq_length)
+        # _X_train = self.preprocessor.bert_pack_inputs([self.preprocessor.tokenize(X_train[0]), self.preprocessor.tokenize(X_train[1])], seq_length=self.seq_length)
+        # _X_val = self.preprocessor.bert_pack_inputs([self.preprocessor.tokenize(X_val[0]), self.preprocessor.tokenize(X_val[1])], seq_length=self.seq_length)
+        _X_train = {"context_input": tf.convert_to_tensor(X_train[0]), "utterance_input": tf.convert_to_tensor(X_train[1])}
+        _X_val = {"context_input": tf.convert_to_tensor(X_val[0]), "utterance_input": tf.convert_to_tensor(X_val[1])}
         print("Data preprocessed")
 
         if self.use_masking_when_training:
@@ -111,12 +134,18 @@ class BERTEmbeddingModel(AbstractEmbeddingModel):
             _X_train["mask_input"] = np.ones_like(X_train[2])
             _X_val["mask_input"] = np.ones_like(X_val[2])
 
-        history = self.model.fit(x=_X_train, y=y_train,
-                                 validation_data=(_X_val, y_val),
-                                 epochs=self.epochs, batch_size=self.batch_size)
+        try:
+            history = self.model.fit(x=_X_train, y=y_train,
+                                     validation_data=(_X_val, y_val),
+                                     epochs=self.epochs, batch_size=self.batch_size)
+        except KeyboardInterrupt:
+            history = None
+            print("Training stopped by CTRL+C")
+
         return history
 
     def predict_proba(self, X_test, mask=None):
-        _X_test = self.preprocessor.bert_pack_inputs([self.preprocessor.tokenize(X_test[0]), self.preprocessor.tokenize(X_test[1])], seq_length=self.seq_length)
-        _X_test["mask_input"] = X_test[2]
+        # _X_test = self.preprocessor.bert_pack_inputs([self.preprocessor.tokenize(X_test[0]), self.preprocessor.tokenize(X_test[1])],
+        #                                              seq_length=self.seq_length)
+        _X_test = {"context_input": tf.convert_to_tensor(X_test[0]), "utterance_input": tf.convert_to_tensor(X_test[1]), "mask_input": X_test[2]}
         return self.model.predict(_X_test)
