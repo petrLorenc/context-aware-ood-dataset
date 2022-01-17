@@ -3,6 +3,30 @@ from utils.testing import Testing
 
 import time, psutil
 import numpy as np
+from sklearn.model_selection import KFold
+
+from models.sklearn_models import SklearnLogisticRegression
+from models.neural_nets import OwnLogisticRegression, BaselineNNExtraLayer
+from models.cosine_similarity import CosineSimilarity
+
+
+# def find_best_threshold(X, y, classification_model):
+#     if type(classification_model) == CosineSimilarity:
+#         sim = np.inner(X, X)
+#         sim = np.exp(sim - 1)
+#         second_smallest = np.argsort(-sim)[:, 1]
+#         if second_smallest.shape[0] <= 1:
+#             second_smallest_sim = [0.5]
+#         else:
+#             second_smallest_sim = np.take(sim, second_smallest, axis=1)[:, 1]
+#         return np.average(second_smallest_sim)
+#     elif type(classification_model) == SklearnLogisticRegression or type(classification_model) == OwnLogisticRegression or type(classification_model) == BaselineNNExtraLayer:
+#         probs = classification_model.predict_proba(X)
+#         return np.average(probs)
+
+
+def find_best_threshold(X):
+    return np.average([x[1] for x in X])
 
 
 def evaluate(dataset, classification_model, embedding_model, limit_num_sents, find_best_threshold_fn):
@@ -12,8 +36,8 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
     start_time_train = time.time()
 
     # Split dataset
-    X_train, y_train = split.get_X_y(dataset['train'], limit_num_sents=limit_num_sents)
-    X_val, y_val = split.get_X_y(dataset['val'], limit_num_sents=limit_num_sents)
+    X_train, y_train = split.get_X_y(dataset['train'] + dataset["global_train"], limit_num_sents=limit_num_sents)
+    X_val, y_val = split.get_X_y(dataset['val'] + dataset["global_val"], limit_num_sents=limit_num_sents)
 
     # Train
     classification_model.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
@@ -27,10 +51,10 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
 
     predictions = np.column_stack([pred_labels, pred_similarities])  # 2D list of [pred_label, similarity]
 
-    for pred, true_label in zip(predictions, y_val):
-        val_predictions_labels.append((pred, true_label))
+    for (pred_label, similarity), true_label in zip(predictions, y_val):
+        val_predictions_labels.append((pred_label, similarity, true_label.numpy()))
 
-    threshold = find_best_threshold_fn(val_predictions_labels, split.intents_dct['ood'])
+    threshold = find_best_threshold_fn(val_predictions_labels)
 
     end_time_train = time.time()
 
@@ -57,8 +81,7 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
     results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="IND")
 
     ###################################################################
-    X_test, _ = split.get_X_y(dataset['global_test'], limit_num_sents=None)
-    y_test = [999] * len(X_test)
+    X_test, y_test = split.get_X_y(dataset['global_test'], limit_num_sents=None)
 
     pred_probs = classification_model.predict_proba(X_test)  # returns numpy array
 
@@ -68,9 +91,9 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
     predictions = []
     for pred_label, pred_similarity in zip(pred_labels, pred_similarities):
         if pred_similarity < threshold:
-            predictions.append(999)
+            predictions.append(split.intents_dct['ood'])
         else:
-            predictions.append(-1)
+            predictions.append(pred_label)
 
     results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="IND")
 
@@ -88,7 +111,7 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
         if pred_similarity < threshold:
             predictions.append(split.intents_dct['ood'])
         else:
-            predictions.append(-1)
+            predictions.append(-999)
     # Test
     results_dct["results"]["ood"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=split.intents_dct['ood'], focus="OOD")
 

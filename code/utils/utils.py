@@ -15,7 +15,7 @@ class TransformToEmbeddings:
                             embed_f - function that encodes sentences as embeddings
     """
 
-    def __init__(self, embed_f):
+    def __init__(self, embed_f, contexts=None):
         self.intents_dct = {
             "ood": -1,
             "global": -2,
@@ -23,6 +23,7 @@ class TransformToEmbeddings:
         }
         self.new_key_value = 0
         self.embed_f = embed_f
+        self.contexts = contexts
 
     def get_X_y(self, lst, limit_num_sents=None, raw=False):
         """
@@ -33,6 +34,7 @@ class TransformToEmbeddings:
         :returns:           X - sentences encoded as embeddings, tf.Tensor OR sentences, list
                             y - intents, tf.Tensor
         """
+        contexts = []
         X = []
         y = []
 
@@ -54,13 +56,18 @@ class TransformToEmbeddings:
 
                 label_occur_count[label] += 1
 
+            if self.contexts is not None:
+                contexts.append(random.choice(self.contexts))
             X.append(sent)
             y.append(self.intents_dct[label])
 
         if not raw:
             if self.embed_f is not None:
                 if len(X) != 0:
-                    X = self.embed_f(X)
+                    if self.contexts is not None:
+                        X = self.embed_f((contexts, X))
+                    else:
+                        X = self.embed_f(X)
                 X = tf.convert_to_tensor(X, dtype='float32')
 
             y = tf.convert_to_tensor(y, dtype='int32')

@@ -7,10 +7,12 @@ import tensorflow as tf
 from models import AbstractModel
 from utils.testing import Testing
 from utils.utils import TransformToEmbeddings
+from custom_embeddings.BERT_style import ContextBased
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 def find_best_threshold(X_train):
-    sim = np.inner(X_train, X_train)
+    sim = cosine_similarity(X_train, X_train)
     sim = np.exp(sim - 1)
     second_smallest = np.argsort(-sim)[:, 1]
     if second_smallest.shape[0] <= 1:
@@ -21,8 +23,8 @@ def find_best_threshold(X_train):
 
 
 def evaluate(dataset, classification_model, embedding_model, limit_num_sents, find_best_threshold_fn):
-    local_split = TransformToEmbeddings(embedding_model)
-    global_split = TransformToEmbeddings(embedding_model)
+    local_split = TransformToEmbeddings(embedding_model, dataset["context"] if issubclass(type(embedding_model), ContextBased) else None)
+    global_split = TransformToEmbeddings(embedding_model,  dataset["context"] if issubclass(type(embedding_model), ContextBased) else None)
 
     # TRAINING
     start_time_train = time.time()
@@ -58,10 +60,10 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
     # Split dataset
     X_test, y_test = local_split.get_X_y(dataset['test'], limit_num_sents=None)
 
-    corr_local = np.inner(X_train, X_test)
+    corr_local = cosine_similarity(X_train, X_test)
     corr_local = np.exp(corr_local - 1)
 
-    corr_global = np.inner(X_global, X_test)
+    corr_global = cosine_similarity(X_global, X_test)
     corr_global = np.exp(corr_global - 1)
 
     predictions = []
@@ -86,10 +88,10 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
     # # # Split dataset
     X_test, y_test = global_split.get_X_y(dataset['global_test'], limit_num_sents=None)
 
-    corr_local = np.inner(X_train, X_test)
+    corr_local = cosine_similarity(X_train, X_test)
     corr_local = np.exp(corr_local - 1)
 
-    corr_global = np.inner(X_global, X_test)
+    corr_global = cosine_similarity(X_global, X_test)
     corr_global = np.exp(corr_global - 1)
 
     predictions = []
@@ -119,10 +121,10 @@ def evaluate(dataset, classification_model, embedding_model, limit_num_sents, fi
     # X_test = tf.convert_to_tensor(embedding_model(X_test), dtype='float32')
     y_test = [global_split.intents_dct['ood']] * len(X_test)
 
-    corr_local = np.inner(X_train, X_test)
+    corr_local = cosine_similarity(X_train, X_test)
     corr_local = np.exp(corr_local - 1)
 
-    corr_global = np.inner(X_global, X_test)
+    corr_global = cosine_similarity(X_global, X_test)
     corr_global = np.exp(corr_global - 1)
 
     predictions = []

@@ -78,7 +78,7 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
     start_time_train = time.time()
     # Train
     num_classes = max(y_train_with_context) + 1
-    classification_model.create_model(num_classes)
+    classification_model.create_model(emb_dim=None, num_classes=num_classes)
     y_train_with_context = to_categorical(y_train_with_context, num_classes=num_classes)
     y_val_with_context = to_categorical(y_val_with_context, num_classes=num_classes)
 
@@ -104,12 +104,15 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
 
     memory = psutil.Process().memory_full_info().uss / (1024 ** 2)  # in megabytes
 
+    _predictions = classification_model.predict_proba((X_val_context, X_val_utterance, mask_val))
+    threshold = get_threshold(_predictions)
+
     # TESTING
     results_dct = {"results": {}}
     start_time_inference = time.time()
 
     _predictions = classification_model.predict_proba((X_test_local_context, X_test_local_utterance, mask_test_local))
-    predictions = list(map(lambda x: np.argmax(x) if np.max(x) > get_threshold(None) else global_split.intents_dct['ood'], _predictions))
+    predictions = list(map(lambda x: np.argmax(x) if np.max(x) > threshold else global_split.intents_dct['ood'], _predictions))
     threshold_local = np.max(_predictions, axis=1)
 
     results_dct["results"]["local_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test_local,
@@ -118,7 +121,7 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
 
     # # # Split dataset
     _predictions = classification_model.predict_proba((X_test_global_context, X_test_global_utterances, mask_test_global))
-    predictions = list(map(lambda x: np.argmax(x) if np.max(x) > get_threshold(None) else global_split.intents_dct['ood'], _predictions))
+    predictions = list(map(lambda x: np.argmax(x) if np.max(x) > threshold else global_split.intents_dct['ood'], _predictions))
     threshold_global = np.max(_predictions, axis=1)
 
     results_dct["results"]["global_intents"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test_global,
@@ -127,11 +130,13 @@ def evaluate(dataset, embedding_model, classification_model, get_threshold):
 
     y_test = [global_split.intents_dct['ood']] * len(local_X_ood_context)
     _predictions = classification_model.predict_proba((local_X_ood_context, local_X_ood_utterance, mask_ood))
-    predictions = list(map(lambda x: np.argmax(x) if np.max(x) > get_threshold(None) else global_split.intents_dct['ood'], _predictions))
+    predictions = list(map(lambda x: np.argmax(x) if np.max(x) > threshold else global_split.intents_dct['ood'], _predictions))
 
     results_dct["results"]["ood"] = Testing.test_illusionist(y_pred=predictions, y_test=y_test, oos_label=local_split.intents_dct['ood'], focus="OOD")
 
     end_time_inference = time.time()
+
+    classification_model.save_embedding_model()
 
     results_dct['time_train'] = round(end_time_train - start_time_train, 1)
     results_dct['time_inference'] = round(end_time_inference - start_time_inference, 1)

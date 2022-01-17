@@ -21,6 +21,11 @@ class CosineSimilarity(AbstractModel):
         self.X_train = np.asarray(X_train)
         self.y_train = np.asarray(y_train)
 
+        clf = CosineSimilarity()
+        clf.X_train = np.asarray(self.X_train)
+        clf.y_train = np.asarray(self.y_train)
+        return clf
+
     def predict(self, X_test):
         results = cosine_similarity(X_test, self.X_train)
         idxs = np.argmax(results, axis=1)
@@ -31,7 +36,7 @@ class CosineSimilarity(AbstractModel):
     def predict_proba(self, X_test):
         results = cosine_similarity(X_test, self.X_train)
         idxs = np.argmax(results, axis=1)
-        probs = np.take_along_axis(results, indices=np.expand_dims(idxs, axis=1), axis=1).squeeze()
+        probs = np.take_along_axis(results, indices=np.expand_dims(idxs, axis=1), axis=1).reshape(-1)
         predictions = self.y_train[idxs]  # class predictions (used as positions in sparse matrix)
 
         num_sents = len(X_test)  # number of sentences in test split
@@ -50,3 +55,4 @@ class CosineSimilarity(AbstractModel):
                 similarity = pred[1]
         """
         return None
+

@@ -105,12 +105,18 @@ class DatasetOriginal(DatasetGenerator):
 class DatasetFlatten(DatasetGenerator):
 
     def __init__(self, dialogue_path, global_dialogue_path):
-        with open(global_dialogue_path) as f:
-            self.global_dialogue = json.load(f)
+        if global_dialogue_path is not None:
+            with open(global_dialogue_path) as f:
+                self.global_dialogue = json.load(f)
+        else:
+            self.global_dialogue = {
+                "user_response": {},
+                "out_of_domain": []
+            }
         super().__init__(dialogue_path)
 
     def get_ood(self, level):
-        node = self.dialogue["reference"]["decision_node"]
+        node = self.dialogue["reference"]["decision_node"] if "reference" in self.dialogue else "NO_REFERENCE"
         intents_decision_node = {node: []}
 
         if level == "local":
@@ -118,7 +124,7 @@ class DatasetFlatten(DatasetGenerator):
                 intents_decision_node[node].append([sent, "ood"])
 
         elif level == "global":
-            for sent in self.global_dialogue['ood']:
+            for sent in self.global_dialogue['out_of_domain']:
                 intents_decision_node[node].append([sent, 'ood'])
         else:
             raise Exception(f"Unknown level {level}")
@@ -126,19 +132,17 @@ class DatasetFlatten(DatasetGenerator):
         return intents_decision_node
 
     def get_intent(self, key, level):
-        node = self.dialogue["reference"]["decision_node"]
+        node = self.dialogue["reference"]["decision_node"] if "reference" in self.dialogue else "NO_REFERENCE"
         intents_decision_node = {node: []}
 
         if level == "local":
-            for idx, intent in enumerate(self.dialogue['user_response']):
+            for idx, _ in enumerate(self.dialogue['user_response']):
                 for sent in self.dialogue['user_response'][idx][key]:
                     intents_decision_node[node].append([sent, idx])
         elif level == "global":
-            for intent in self.global_dialogue.keys():
-                if intent == "ood":
-                    continue
-                for sent in self.global_dialogue[intent][key]:
-                    intents_decision_node[node].append([sent, int(intent)])
+            for idx, _ in enumerate(self.global_dialogue['user_response']):
+                for sent in self.global_dialogue['user_response'][idx][key]:
+                    intents_decision_node[node].append([sent, idx])
         else:
             raise Exception(f"Unknown level {level}")
 
@@ -152,8 +156,55 @@ class DatasetFlatten(DatasetGenerator):
         return garbages
 
     def get_context(self):
-        return self.dialogue["bot_response"]
+        return self.dialogue["bot_response"] if "bot_response" in self.dialogue else []
 
+
+class DatasetCLINC(DatasetGenerator):
+
+    def __init__(self, dialogue_path, domains_path):
+        super().__init__(dialogue_path)
+        if domains_path:
+            with open(domains_path) as f:
+                self.domains = json.load(f)
+
+    def get_ood(self, level):
+        node = self.dialogue["reference"]["decision_node"] if "reference" in self.dialogue else "NO_REFERENCE"
+        intents_decision_node = {node: []}
+        if level == "local":
+            other_intents = list(set([x[1] for x in self.dialogue["train"] if x[1] in self.domains["travel"]]))
+            local_intents = [[x[0], other_intents.index(x[1])] for x in self.dialogue["train"] if x[1] in self.domains["travel"]]
+            intents_decision_node[node] = local_intents
+        if level == "global":
+            intents_decision_node = {node: [[x[0], "ood"] for x in self.dialogue["oos_test"]]}
+
+        return intents_decision_node
+
+    def get_intent(self, key, level):
+        node = self.dialogue["reference"]["decision_node"] if "reference" in self.dialogue else "NO_REFERENCE"
+        intents_decision_node = {node: []}
+
+        if level == "local":
+            other_intents = list(set([x[1] for x in self.dialogue[key] if x[1] in self.domains["work"]]))
+            local_intents = [[x[0], other_intents.index(x[1])] for x in self.dialogue[key] if x[1] in self.domains["work"]]
+            intents_decision_node[node] = local_intents
+
+        elif level == "global":
+            global_intents = [[x[0], self.domains["meta"].index(x[1])] for x in self.dialogue[key] if x[1] in self.domains["meta"]]
+            intents_decision_node[node] = global_intents
+        else:
+            raise Exception(f"Unknown level {level}")
+
+        return intents_decision_node
+
+    def get_garbage(self):
+        garbages = []
+        with open(os.path.join(ROOT_DIR, 'data', "garbage", "garbage.txt"), "r") as f:
+            for sent in f.readlines():
+                garbages.append([sent.strip(), "garbage"])
+        return garbages
+
+    def get_context(self):
+        return self.dialogue["bot_response"] if "bot_response" in self.dialogue else []
 
 def generate_dataset(name,
                      categories,
@@ -211,14 +262,17 @@ def generate_dataset(name,
         if return_type is DatasetReturnType.RETURN_ALL:
             yield dataset_grouped
 
+    ##############################################################################################################
     elif dataset_type is DatasetType.FLATTEN:
         # Prepare files
         files_path = [os.path.join(annotated_files_path, ds) for ds in os.listdir(annotated_files_path)]
 
         for file_path in files_path:
-            print(file_path)
             if file_path.endswith("global.json"):
                 continue
+            if not file_path.endswith(".json"):
+                continue
+            print(file_path)
             datasetGenerator = DatasetFlatten(file_path, global_path)
 
             context = datasetGenerator.get_context()
@@ -256,6 +310,49 @@ def generate_dataset(name,
                     yield dataset
                 elif return_type is DatasetReturnType.RETURN_ALL:
                     dataset_grouped.append(dataset)
+
+        if return_type is DatasetReturnType.RETURN_ALL:
+            yield dataset_grouped
+
+    ##########################################################################################3
+    elif dataset_type is DatasetType.CLINC150:
+        datasetGenerator = DatasetCLINC(dialogue_path=annotated_files_path, domains_path=global_path)
+
+        context = datasetGenerator.get_context()
+        local_data_train = datasetGenerator.get_intent(key="train", level="local")
+        local_data_val = datasetGenerator.get_intent(key="val", level="local")
+        local_data_test = datasetGenerator.get_intent(key=test_label, level="local")
+
+        global_data_train = datasetGenerator.get_intent(key="train", level="global")
+        global_data_valid = datasetGenerator.get_intent(key="val", level="global")
+        global_data_test = datasetGenerator.get_intent(key=test_label, level="global")
+
+        local_ood = datasetGenerator.get_ood(level="local")
+        global_ood = datasetGenerator.get_ood(level="global")
+        garbage = datasetGenerator.get_garbage()
+
+        dataset = {}
+
+        for decision_node in local_data_train.keys():
+            print(decision_node)
+            dataset["context"] = context
+
+            dataset['train'] = local_data_train[decision_node]
+            dataset['val'] = local_data_val[decision_node]
+            dataset['test'] = local_data_test[decision_node]
+
+            dataset['global_train'] = global_data_train[decision_node]
+            dataset['global_val'] = global_data_valid[decision_node]
+            dataset['global_test'] = global_data_test[decision_node]
+
+            dataset["local_ood"] = local_ood[decision_node]
+            dataset["global_ood"] = global_ood[decision_node]
+            dataset["garbage"] = garbage
+
+            if return_type is DatasetReturnType.YIELD_SEPARATELY:
+                yield dataset
+            elif return_type is DatasetReturnType.RETURN_ALL:
+                dataset_grouped.append(dataset)
 
         if return_type is DatasetReturnType.RETURN_ALL:
             yield dataset_grouped

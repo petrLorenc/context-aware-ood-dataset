@@ -9,13 +9,13 @@ from models import AbstractModel
 
 
 class AbstractNeuralNet(AbstractModel, metaclass=ABCMeta):
-    def __init__(self, loss_function=None, epochs=None, batch_size=None, init_learning_rate=None):
+    def __init__(self, loss_function, epochs, batch_size, init_learning_rate):
         super().__init__()
         self.epochs = epochs
         self.batch_size = batch_size
         self.init_learning_rate = init_learning_rate
         self.loss_function = loss_function
-        self.early_stopping_patience = 10
+        self.early_stopping_patience = 2
 
     def to_dict(self):
         return {
@@ -38,8 +38,12 @@ class AbstractNeuralNet(AbstractModel, metaclass=ABCMeta):
         es = EarlyStopping(monitor='val_loss', mode="min", patience=self.early_stopping_patience)
 
         try:
-            self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=self.epochs, batch_size=self.batch_size, verbose=0,
-                           callbacks=[es])
+            if X_val is not None:
+                self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=self.epochs, batch_size=self.batch_size, verbose=0,
+                               callbacks=[es])
+            else:
+                self.model.fit(X_train, y_train, validation_split=0.1, epochs=self.epochs, batch_size=self.batch_size, verbose=0,
+                               callbacks=[es])
         except KeyboardInterrupt:
             print("Training stopped by CTRL+C")
 
@@ -75,6 +79,7 @@ class AbstractNeuralNet(AbstractModel, metaclass=ABCMeta):
 
         return probs
 
+
 class OwnLogisticRegression(AbstractNeuralNet):
     """Baseline Neural Net"""
 
@@ -98,3 +103,17 @@ class BaselineNNExtraLayer(AbstractNeuralNet):
 
         return model
 
+
+class BaselineNNTwoExtraLayer(AbstractNeuralNet):
+    """Baseline Neural Net Extra Layer"""
+
+    def create_model(self, emb_dim, num_classes):
+        model = tf.keras.Sequential([
+            layers.InputLayer(input_shape=emb_dim),
+            layers.Dense(emb_dim, activation="relu"),
+            layers.Dropout(0.3),
+            layers.Dense(128, activation="relu"),
+            layers.Dropout(0.3),
+            layers.Dense(num_classes, activation=activations.softmax)])
+
+        return model

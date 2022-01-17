@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer, AutoModel
 import torch
+import numpy as np
 
 
 # Mean Pooling - Take attention mask into account for correct averaging
@@ -14,8 +15,8 @@ class HuggingFaceModel:
     def __init__(self, tokenizer_path, model_path):
         self.tokenizer_path = tokenizer_path
         self.model_path = model_path
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=True)
-        self.model = AutoModel.from_pretrained(model_path, local_files_only=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=not tokenizer_path.startswith("sentence-transformers/"))
+        self.model = AutoModel.from_pretrained(model_path, local_files_only=not tokenizer_path.startswith("sentence-transformers/"))
 
     def __call__(self, *args, **kwargs):
         encoded_input = self.tokenizer(args[0], padding=True, truncation=True, return_tensors='pt')
@@ -25,4 +26,6 @@ class HuggingFaceModel:
             model_output = self.model(**encoded_input)
 
         # Perform pooling. In this case, max pooling.
-        return mean_pooling(model_output, encoded_input['attention_mask'])
+        vec = mean_pooling(model_output, encoded_input['attention_mask'])
+        # Normalize
+        return vec/np.linalg.norm(vec)
