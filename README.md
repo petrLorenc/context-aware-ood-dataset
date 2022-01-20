@@ -1,5 +1,5 @@
 # Context-Aware OOD dataset
-This repository will be used for code and data used in a paper *Context-Aware Out-of-Domain Detection in Conversational Domain* (all code and data will be uploaded after acceptance/rejection of paper). All data contain 49 dialogue points covering 12 topics.
+This repository will be used for code and data used in a paper *Context-Aware Out-of-Domain Detection in Conversational Domain* (all code and data will be uploaded after acceptance/rejection of paper). Whole dataset contains 49 dialogue points covering 12 topics.
 
 
 Data format:
