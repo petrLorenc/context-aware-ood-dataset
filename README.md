@@ -1,5 +1,15 @@
+
 # Context-Aware OOD dataset
+
+# Description
+
 This repository will be used for code and data used in a paper *Context-Aware Out-of-Domain Detection in Conversational Domain* (all code and data will be uploaded after acceptance/rejection of paper). Whole dataset contains 49 dialogue points covering 12 topics.
+
+Dataset is saved in **data** folder. Statistics.ipynb shown statistics shown in paper.
+
+# Dependencies
+
+```pip install -r requirements.txt```
 
 
 Data format:
